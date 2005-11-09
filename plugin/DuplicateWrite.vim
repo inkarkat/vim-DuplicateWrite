@@ -3,6 +3,7 @@
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS 
+"	0.02	19-Jul-2005	Added configurable behavior on buffer deletion. 
 "	0.01	19-Jul-2005	file creation
 
 " Avoid installing twice or when in compatible mode
@@ -10,6 +11,18 @@ if exists("loaded_DuplicateWrite")
     finish
 endif
 let loaded_DuplicateWrite = 1
+
+"-- global configuration ------------------------------------------------------
+if !exists("g:DuplicateWriteOnBufDelete")
+    " This setting decides what happens when a buffer with 'DuplicateWriteTo' is
+    " deleted (e.g. ':bd'):
+    " 0: The cascaded write is kept. If the file is reloaded, the cascaded write
+    "	 is resumed. 
+    " 1: The cascaded write is removed. 
+    " 2: The user is queried whether DuplicateWrite should be deactivated. 
+    let g:DuplicateWriteKeepOnBufDelete = 1
+endif
+
 
 "-- commands ------------------------------------------------------------------
 " Create a cascaded write of the current buffer to the specified file. 
@@ -28,18 +41,22 @@ command! -nargs=0 DuplicateWriteListAll autocmd DuplicateWrite BufWritePost
 
 "-- functions -----------------------------------------------------------------
 function! s:DuplicateWriteTo( targetFilespec )
-    let l:sourceFilespec = expand("%:p")
-    " Windows: Replace backslashes in filespec with forward slashes. 
-    " Otherwise, the autocmd won't match the filespec. 
-    let l:sourceFilespec = substitute( l:sourceFilespec, '\', '/', 'g' )
-
     augroup DuplicateWrite
     execute "autocmd DuplicateWrite BufWritePost " . s:GetSourceFileSpec() . " write! " . a:targetFilespec
+    if g:DuplicateWriteKeepOnBufDelete == 0
+	" The autocmd is kept. 
+    elseif g:DuplicateWriteKeepOnBufDelete == 1
+	execute "autocmd DuplicateWrite BufDelete " . s:GetSourceFileSpec() . " call <SID>TurnOff( \"" . s:GetSourceFileSpec() . "\" )"
+    elseif g:DuplicateWriteKeepOnBufDelete == 2
+	execute "autocmd DuplicateWrite BufDelete " . s:GetSourceFileSpec() . " call <SID>ConfirmTurnOff( \"" . s:GetSourceFileSpec() . "\" )"
+    else
+	assert 0
+    endif
     augroup END
 endfunction
 
 function! s:DuplicateWriteOff()
-    execute "autocmd! DuplicateWrite BufWritePost " . s:GetSourceFileSpec()
+    call s:TurnOff( s:GetSourceFileSpec() )
 endfunction
 
 function! s:DuplicateWriteList()
@@ -53,5 +70,15 @@ function! s:GetSourceFileSpec()
     let l:sourceFilespec = substitute( l:sourceFilespec, '\', '/', 'g' )
 
     return l:sourceFilespec
+endfunction
+
+function! s:TurnOff( sourceFilespec )
+    execute "autocmd! DuplicateWrite * " . a:sourceFilespec
+endfunction
+
+function! s:ConfirmTurnOff( sourceFilespec )
+    if confirm( "DuplicateWrite is still active for this buffer. Do you want to deactivate it?", "&Yes\n&No" ) == 1
+	call s:TurnOff( a:sourceFilespec )
+    endif
 endfunction
 
