@@ -1,8 +1,9 @@
-" DuplicateWrite.vim: Cascades the writing of a file so that the file is also
+" DuplicateWrite.vim: Cascade the writing of a file so that the file is also
 " written to another location and/or name. 
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS 
+"	0.03	10-Nov-2005	BF: Filespecs containing spaces do work now. 
 "	0.02	19-Jul-2005	Added configurable behavior on buffer deletion. 
 "	0.01	19-Jul-2005	file creation
 
@@ -68,6 +69,12 @@ function! s:GetSourceFileSpec()
     " Windows: Replace backslashes in filespec with forward slashes. 
     " Otherwise, the autocmd won't match the filespec. 
     let l:sourceFilespec = substitute( l:sourceFilespec, '\', '/', 'g' )
+
+    " Escape spaces in filespec.
+    " Otherwise, the autocmd will be parsed wrongly, taking only the first part
+    " of the filespec as the file and interpreting the remainder of the filespec
+    " as part of the command. 
+    let l:sourceFilespec = escape( l:sourceFilespec, ' ' )
 
     return l:sourceFilespec
 endfunction
