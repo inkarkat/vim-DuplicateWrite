@@ -8,13 +8,13 @@
 "	0.01	19-Jul-2005	file creation
 
 " Avoid installing twice or when in compatible mode
-if exists("loaded_DuplicateWrite")
+if exists('g:loaded_DuplicateWrite')
     finish
 endif
-let loaded_DuplicateWrite = 1
+let g:loaded_DuplicateWrite = 1
 
 "-- global configuration ------------------------------------------------------
-if !exists("g:DuplicateWriteOnBufDelete")
+if !exists('g:DuplicateWriteOnBufDelete')
     " This setting decides what happens when a buffer with 'DuplicateWriteTo' is
     " deleted (e.g. ':bd'):
     " 0: The cascaded write is kept. If the file is reloaded, the cascaded write
@@ -51,7 +51,7 @@ function! s:DuplicateWriteTo( targetFilespec )
     elseif g:DuplicateWriteKeepOnBufDelete == 2
 	execute "autocmd DuplicateWrite BufDelete " . s:GetSourceFileSpec() . " call <SID>ConfirmTurnOff( \"" . s:GetSourceFileSpec() . "\" )"
     else
-	assert 0
+	throw 'ASSERT: Invalid value for g:DuplicateWriteKeepOnBufDelete: ' . g:DuplicateWriteKeepOnBufDelete
     endif
     augroup END
 endfunction
