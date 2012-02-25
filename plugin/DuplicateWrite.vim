@@ -109,4 +109,4 @@ command! -nargs=0 DuplicateWriteList call <SID>DuplicateWriteList()
 " List all cascaded writes. 
 command! -nargs=0 DuplicateWriteListAll autocmd DuplicateWrite BufWritePost
 
-" vim: set sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
+" vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
