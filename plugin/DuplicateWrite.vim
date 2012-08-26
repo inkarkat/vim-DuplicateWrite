@@ -5,11 +5,13 @@
 "   - Requires Vim 7.0 or higher. 
 "   - escapings.vim autoload script. 
 "
-" Copyright: (C) 2005-2011 by Ingo Karkat
+" Copyright: (C) 2005-2012 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'. 
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS 
+"	005	26-Feb-2012	Renamed b:duplicatewrite to b:DuplicateWrite to
+"				match plugin name. 
 "	004	12-Apr-2011	BUG: Duplicate write clobbers alternate file,
 "				use :keepalt. 
 "				Cosmetics: Script formatting and function
@@ -60,7 +62,7 @@ endfunction
 function! s:TurnOff( sourceFilespec )
     execute 'autocmd! DuplicateWrite *' a:sourceFilespec
 
-    unlet! b:duplicatewrite
+    unlet! b:DuplicateWrite
 endfunction
 
 function! s:ConfirmTurnOff( sourceFilespec )
@@ -78,7 +80,7 @@ function! s:DuplicateWriteList()
 endfunction
 
 function! s:DuplicateWriteTo( targetFilespec )
-    let b:duplicatewrite = (exists('b:duplicatewrite') ? b:duplicatewrite + 1 : 1)  " Mark buffer to enable easy flagging in statusline.
+    let b:DuplicateWrite = (exists('b:DuplicateWrite') ? b:DuplicateWrite + 1 : 1)  " Mark buffer to enable easy flagging in statusline.
 
     augroup DuplicateWrite
 	execute 'autocmd DuplicateWrite BufWritePost' s:GetSourceFileSpec() 'keepalt write!' escapings#fnameescape(a:targetFilespec)
