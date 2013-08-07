@@ -2,13 +2,15 @@
 " written to another location and/or name.
 "
 " DEPENDENCIES:
-"   - escapings.vim autoload script.
+"   - escapings.vim autoload script
 "
 " Copyright: (C) 2005-2012 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS
+"	007	14-Dec-2012	Extract escaping for :autocmd to
+"				escapings#autocmdescape().
 "	006	27-Aug-2012	Split off autoload script.
 "	005	26-Feb-2012	Renamed b:duplicatewrite to b:DuplicateWrite to
 "				match plugin name.
@@ -25,18 +27,7 @@
 "	0.01	19-Jul-2005	file creation
 
 function! s:GetSourceFileSpec()
-    let l:sourceFilespec = expand('%:p')
-    " Windows: Replace backslashes in filespec with forward slashes.
-    " Otherwise, the autocmd won't match the filespec.
-    let l:sourceFilespec = substitute( l:sourceFilespec, '\', '/', 'g' )
-
-    " Escape spaces in filespec.
-    " Otherwise, the autocmd will be parsed wrongly, taking only the first part
-    " of the filespec as the file and interpreting the remainder of the filespec
-    " as part of the command.
-    let l:sourceFilespec = escape(l:sourceFilespec, ' ')
-
-    return l:sourceFilespec
+    return escapings#autocmdescape(expand('%:p'))
 endfunction
 
 function! s:TurnOff( sourceFilespec )
