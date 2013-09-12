@@ -4,12 +4,14 @@
 " DEPENDENCIES:
 "   - Requires Vim 7.0 or higher.
 "   - DuplicateWrite.vim autoload script
+"   - ingo/compat.vim autoload script
 "
-" Copyright: (C) 2005-2012 Ingo Karkat
+" Copyright: (C) 2005-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS
+"	007	08-Aug-2013	Move escapings.vim into ingo-library.
 "	006	27-Aug-2012	Split off autoload script.
 "	005	26-Feb-2012	Renamed b:duplicatewrite to b:DuplicateWrite to
 "				match plugin name.
