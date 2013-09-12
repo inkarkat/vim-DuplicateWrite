@@ -2,7 +2,6 @@
 "
 " DEPENDENCIES:
 "   - ingo/compat.vim autoload script
-"   - ingo/escape/file.vim autoload script
 "   - ingo/fs/path.vim autoload script
 "   - ingo/msg.vim autoload script
 "
@@ -14,6 +13,17 @@
 " REVISION	DATE		REMARKS
 "   1.00.009	13-Sep-2013	ENH: Check for a passed dirspec, and use the
 "				same filename then.
+"				Rewrite the implementation completely: Instead
+"				of using the filespec in the autocmds, we define
+"				a single buffer-scoped autocmd, and keep the
+"				filespecs in the b:DuplicateWrite variable. This
+"				makes it easier to avoid adding the same
+"				cascaded write target twice. The duplication is
+"				automatically cleared on :bdelete, so we don't
+"				need the configurable behavior any more. It also
+"				means the list functions become more involved,
+"				but this also allows us to improve on the output
+"				format.
 "	008	08-Aug-2013	Move escapings.vim into ingo-library.
 "	007	14-Dec-2012	Extract escaping for :autocmd to
 "				escapings#autocmdescape().
@@ -31,14 +41,12 @@
 "	0.03	10-Nov-2005	BF: Filespecs containing spaces do work now.
 "	0.02	19-Jul-2005	Added configurable behavior on buffer deletion.
 "	0.01	19-Jul-2005	file creation
+let s:save_cpo = &cpo
+set cpo&vim
 
-function! DuplicateWrite#GetSourceFilespec()
-    return ingo#escape#file#autocmdescape(expand('%:p'))
-endfunction
-
-function! s:TurnOff( sourceFilespec )
+function! DuplicateWrite#Off()
     try
-	execute 'autocmd! DuplicateWrite *' a:sourceFilespec
+	execute 'autocmd! DuplicateWrite * <buffer>'
     catch /^Vim\%((\a\+)\)\=:E216/ " E216: No such group or event
 	call ingo#msg#ErrorMsg('No cascaded writes defined for this buffer')
     endtry
@@ -46,41 +54,72 @@ function! s:TurnOff( sourceFilespec )
     unlet! b:DuplicateWrite
 endfunction
 
-function! s:ConfirmTurnOff( sourceFilespec )
-    if confirm('DuplicateWrite is still active for this buffer. Do you want to deactivate it?', "&Yes\n&No") == 1
-	call s:TurnOff(a:sourceFilespec)
+function! DuplicateWrite#Add( target )
+    if isdirectory(a:target)
+	if empty(expand('%:t'))
+	    call ingo#msg#ErrorMsg('No file name; either name the buffer or pass a full filespec')
+	    return
+	else
+	    let l:targetFilespec = ingo#fs#path#Combine(a:target, expand('%:t'))
+	endif
+    else
+	let l:targetFilespec = a:target
+    endif
+
+    augroup DuplicateWrite
+	autocmd! * <buffer>
+	autocmd BufWritePost <buffer>
+	\   for g:DuplicateWrite_CurrentFilespec in b:DuplicateWrite |
+	\       try |
+	\           execute "keepalt write!" ingo#compat#fnameescape(g:DuplicateWrite_CurrentFilespec) |
+	\       catch /^Vim\%((\a\+)\)\=:/ |
+	\           call ingo#msg#VimExceptionMsg() |
+	\           sleep 1 |
+	\       endtry |
+	\   endfor |
+	\   unlet g:DuplicateWrite_CurrentFilespec
+	" Use try...catch to prevent the first write error from cancelling all
+	" further cascaded writes.
+	" To avoid that the error message is overwritten by subsequent
+	" successful cascaded writes (and their potentially triggered autocmds),
+	" wait for a second. The user can recall the error with :messages later.
+
+	" Clear the autocmds, as they survive when the :bdelete'd buffer is
+	" revived via :buffer.
+	autocmd BufDelete <buffer> autocmd! DuplicateWrite * <buffer>
+    augroup END
+
+    if ! exists('b:DuplicateWrite') | let b:DuplicateWrite = [] | endif
+    if index(b:DuplicateWrite, l:targetFilespec) == -1
+	call add(b:DuplicateWrite, l:targetFilespec)
+    else
+	call ingo#msg#WarningMsg(printf('A cascaded write to "%s" is already defined', l:targetFilespec))
     endif
 endfunction
 
-function! DuplicateWrite#Off()
-    call s:TurnOff(DuplicateWrite#GetSourceFilespec())
+function! DuplicateWrite#List()
+    if exists('b:DuplicateWrite')
+	echo join(map(copy(b:DuplicateWrite), '"\"" . v:val . "\""'), "\n")
+    else
+	call ingo#msg#ErrorMsg('No cascaded writes defined for this buffer')
+    endif
 endfunction
-
-function! DuplicateWrite#Add( source, target )
-    let l:targetFilespec = (isdirectory(a:target) ? ingo#fs#path#Combine(a:target, expand('%:t')) : a:target)
-
-    augroup DuplicateWrite
-	execute 'autocmd DuplicateWrite BufWritePost' a:source 'keepalt write!' ingo#compat#fnameescape(l:targetFilespec)
-	if g:DuplicateWriteKeepOnBufDelete == 0
-	    " The autocmd is kept.
-	elseif g:DuplicateWriteKeepOnBufDelete == 1
-	    execute 'autocmd! DuplicateWrite BufDelete' a:source 'call <SID>TurnOff(' . string(a:source) . ')'
-	elseif g:DuplicateWriteKeepOnBufDelete == 2
-	    execute 'autocmd! DuplicateWrite BufDelete' a:source 'call <SID>ConfirmTurnOff(' . string(a:source) . ')'
-	else
-	    throw 'ASSERT: Invalid value for g:DuplicateWriteKeepOnBufDelete: ' . g:DuplicateWriteKeepOnBufDelete
+function! DuplicateWrite#ListAll()
+    let l:isFound = 0
+    for l:bufNr in range(1, bufnr('$'))
+	let l:duplicateWrite = getbufvar(l:bufNr, 'DuplicateWrite')
+	if ! empty(l:duplicateWrite)
+	    let l:isFound = 1
+	    echo printf('%3d  "%s" ->', l:bufNr, bufname(l:bufNr))
+	    echo '        "' . join(l:duplicateWrite, "\"\n        \"") . '"'
 	endif
-    augroup END
-
-    let b:DuplicateWrite = (exists('b:DuplicateWrite') ? b:DuplicateWrite + 1 : 1)  " Mark buffer to enable easy flagging in statusline.
+	unlet! l:duplicateWrite
+    endfor
+    if ! l:isFound
+	call ingo#msg#WarningMsg('No cascaded writes defined')
+    endif
 endfunction
 
-function! DuplicateWrite#List( isGlobal )
-    try
-	execute 'autocmd DuplicateWrite BufWritePost' (a:isGlobal ? '' : DuplicateWrite#GetSourceFilespec())
-    catch /^Vim\%((\a\+)\)\=:E216/ " E216: No such group or event
-	call ingo#msg#ErrorMsg('No cascaded writes defined')
-    endtry
-endfunction
-
+let &cpo = s:save_cpo
+unlet s:save_cpo
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
