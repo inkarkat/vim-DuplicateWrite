@@ -2,13 +2,15 @@
 " written to another location and/or name.
 "
 " DEPENDENCIES:
-"   - escapings.vim autoload script
+"   - ingo/compat.vim autoload script
+"   - ingo/escape/file.vim autoload script
 "
-" Copyright: (C) 2005-2012 Ingo Karkat
+" Copyright: (C) 2005-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS
+"	008	08-Aug-2013	Move escapings.vim into ingo-library.
 "	007	14-Dec-2012	Extract escaping for :autocmd to
 "				escapings#autocmdescape().
 "	006	27-Aug-2012	Split off autoload script.
@@ -27,7 +29,7 @@
 "	0.01	19-Jul-2005	file creation
 
 function! s:GetSourceFileSpec()
-    return escapings#autocmdescape(expand('%:p'))
+    return ingo#escape#file#autocmdescape(expand('%:p'))
 endfunction
 
 function! s:TurnOff( sourceFilespec )
@@ -54,7 +56,7 @@ function! DuplicateWrite#To( targetFilespec )
     let b:DuplicateWrite = (exists('b:DuplicateWrite') ? b:DuplicateWrite + 1 : 1)  " Mark buffer to enable easy flagging in statusline.
 
     augroup DuplicateWrite
-	execute 'autocmd DuplicateWrite BufWritePost' s:GetSourceFileSpec() 'keepalt write!' escapings#fnameescape(a:targetFilespec)
+	execute 'autocmd DuplicateWrite BufWritePost' s:GetSourceFileSpec() 'keepalt write!' ingo#compat#fnameescape(a:targetFilespec)
 	if g:DuplicateWriteKeepOnBufDelete == 0
 	    " The autocmd is kept.
 	elseif g:DuplicateWriteKeepOnBufDelete == 1
