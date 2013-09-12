@@ -1,0 +1,128 @@
+*DuplicateWrite.txt*    Cascade the writing of a file to another location.
+
+		      DUPLICATE WRITE    by Ingo Karkat
+							  *DuplicateWrite.vim*
+description			|DuplicateWrite-description|
+usage				|DuplicateWrite-usage|
+installation			|DuplicateWrite-installation|
+configuration			|DuplicateWrite-configuration|
+integration			|DuplicateWrite-integration|
+limitations			|DuplicateWrite-limitations|
+known problems			|DuplicateWrite-known-problems|
+todo				|DuplicateWrite-todo|
+history				|DuplicateWrite-history|
+
+==============================================================================
+DESCRIPTION					  *DuplicateWrite-description*
+
+Though you should use scripts for automated deployment and version control for
+merges, sometimes, you need to quickly duplicate a file to another file system
+location whenever it is changed.
+This plugin defines a |:DuplicateWrite| command that sets up additional
+|:write| targets. From then on, whenever you save that buffer, the write is
+cascaded to the additional files. Thus, when editing a script in your project
+directory, you can have it immediately copied to the install directory that is
+in the PATH. Or, with the help of the |netrw| plugin, you can even
+automatically upload a locally edited HTML page to the remote web server.
+
+HOW IT WORKS								     *
+
+The plugin hooks into the |BufWritePost| event to issue additional |:write!|
+commands.
+
+==============================================================================
+USAGE							*DuplicateWrite-usage*
+							   *:DuplicateWriteTo*
+:DuplicateWrite {file}|{dirspec}
+			Create a cascaded write of the current buffer to the
+			specified {file}, or to a file with the same filename
+			located in {dirspec}. From now on, whenever the buffer
+			is |:w|ritten, it will also be persisted to the passed
+			location. (Until you |:bdelete| it.)
+			You can issue the command multiple times (with
+			different {file} targets) for a buffer to add cascades
+			to several concurrent locations.
+							  *:DuplicateWriteOff*
+:DuplicateWriteOff	Turn off all cascaded writes for the current buffer.
+
+							 *:DuplicateWriteList*
+:DuplicateWriteList	List the cascaded write target(s) for the current
+			buffer.
+						      *:DuplicateWriteListAll*
+:DuplicateWriteListAll	List the cascaded write target(s) for all open
+			buffers that have any. The buffers are listed with
+			their number followed by the name; the targets are
+			listed in the following, indented lines, for example:
+			4  "DuplicateWrite.txt" -> ~
+				"C:\temp\DuplicateWrite.txt" ~
+				"X:\backup.txt" ~
+
+==============================================================================
+INSTALLATION					 *DuplicateWrite-installation*
+
+This script is packaged as a |vimball|. If you have the "gunzip" decompressor
+in your PATH, simply edit the *.vmb.gz package in Vim; otherwise, decompress
+the archive first, e.g. using WinZip. Inside Vim, install by sourcing the
+vimball or via the |:UseVimball| command. >
+    vim DuplicateWrite*.vmb.gz
+    :so %
+To uninstall, use the |:RmVimball| command.
+
+DEPENDENCIES					 *DuplicateWrite-dependencies*
+
+- Requires Vim 7.0 or higher.
+- Requires the |ingo-library.vim| plugin (vimscript #4433), version 1.012 or
+  higher.
+
+==============================================================================
+CONFIGURATION					*DuplicateWrite-configuration*
+
+For a permanent configuration, put the following commands into your |vimrc|:
+	   *g:DuplicateWrite_DefaultMirrors* *b:DuplicateWrite_DefaultMirrors*
+To avoid giving an argument to |:DuplicateWrite|, you can define a List of
+{source-glob}, {target-base} pairs: The part of the buffer's filespec that
+matches {source-glob} will then be replaced by {target-base} to yield the
+target: >
+    let g:DuplicateWrite_DefaultMirrors = [
+    \	['D:\project\foo', 'X:\foo'],
+    \	['**\src\**\', 'E:\deploy']
+    \]
+This would for example duplicate a file D:\project\foo\bin\zap.cmd to
+X:\foo\bin\zap.cmd and any file anywhere inside a src/ directory directly to
+E:\deploy when you execute |:DuplicateWrite|.
+
+==============================================================================
+INTEGRATION					  *DuplicateWrite-integration*
+							    *b:DuplicateWrite*
+The filespecs of the cascaded write targets are stored in the buffer-local
+List variable b:DuplicateWrite. You can use its existence / number of elements
+to determine whether / how many duplications are configured, and use this e.g.
+in a custom 'statusline'. If you're careful, you can also manipulate the
+filespecs (but |:DuplicateWrite| needs to be invoked at least once per buffer
+to set up the required autocmds).
+
+==============================================================================
+LIMITATIONS					  *DuplicateWrite-limitations*
+
+KNOWN PROBLEMS				       *DuplicateWrite-known-problems*
+
+TODO							 *DuplicateWrite-todo*
+
+IDEAS							*DuplicateWrite-ideas*
+
+==============================================================================
+HISTORY						      *DuplicateWrite-history*
+
+GOAL
+First published version.
+
+0.01	19-Jul-2005
+Started development.
+
+==============================================================================
+Copyright: (C) 2005-2013 Ingo Karkat
+The VIM LICENSE applies to this plugin; see |copyright|.
+
+Maintainer:	Ingo Karkat <ingo@karkat.de>
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:
