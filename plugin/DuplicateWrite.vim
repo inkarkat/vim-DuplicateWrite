@@ -1,16 +1,16 @@
-" DuplicateWrite.vim: Cascade the writing of a file so that the file is also
-" written to another location and/or name.
+" DuplicateWrite.vim: Cascade the writing of a file to another location.
 "
 " DEPENDENCIES:
 "   - Requires Vim 7.0 or higher.
 "   - DuplicateWrite.vim autoload script
-"   - ingo/compat.vim autoload script
 "
 " Copyright: (C) 2005-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
+"
 " REVISION	DATE		REMARKS
+"   1.00.008	13-Sep-2013	Add -bar.
 "	007	08-Aug-2013	Move escapings.vim into ingo-library.
 "	006	27-Aug-2012	Split off autoload script.
 "	005	26-Feb-2012	Renamed b:duplicatewrite to b:DuplicateWrite to
@@ -36,7 +36,7 @@ let g:loaded_DuplicateWrite = 1
 "-- configuration -------------------------------------------------------------
 
 if !exists('g:DuplicateWriteOnBufDelete')
-    " This setting decides what happens when a buffer with 'DuplicateWriteTo' is
+    " This setting decides what happens when a buffer with 'DuplicateWrite' is
     " deleted (e.g. ':bd'):
     " 0: The cascaded write is kept. If the file is reloaded, the cascaded write
     "	 is resumed.
@@ -49,15 +49,15 @@ endif
 "-- commands ------------------------------------------------------------------
 
 " Create a cascaded write of the current buffer to the specified file.
-command! -nargs=1 -complete=file DuplicateWriteTo call DuplicateWrite#To(<q-args>)
+command! -bar -nargs=1 -complete=file DuplicateWrite call DuplicateWrite#Add(DuplicateWrite#GetSourceFilespec(), <q-args>)
 
 " Remove all cascaded writes of the current buffer.
-command! -nargs=0 DuplicateWriteOff call DuplicateWrite#Off()
+command! -bar DuplicateWriteOff call DuplicateWrite#Off()
 
 " List the cascaded writes of the current buffer.
-command! -nargs=0 DuplicateWriteList call DuplicateWrite#List()
+command! -bar DuplicateWriteList call DuplicateWrite#List(0)
 
 " List all cascaded writes.
-command! -nargs=0 DuplicateWriteListAll autocmd DuplicateWrite BufWritePost
+command! -bar DuplicateWriteListAll call DuplicateWrite#List(1)
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
