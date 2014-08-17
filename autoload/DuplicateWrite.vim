@@ -4,6 +4,7 @@
 "   - ingo/compat.vim autoload script
 "   - ingo/fs/path.vim autoload script
 "   - ingo/msg.vim autoload script
+"   - ingo/os.vim autoload script
 "
 " Copyright: (C) 2005-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
@@ -11,6 +12,8 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.01.010	13-Sep-2013	FIX: Use full absolute path and normalize to be
+"				immune against changes in CWD.
 "   1.00.009	13-Sep-2013	ENH: Check for a passed dirspec, and use the
 "				same filename then.
 "				Rewrite the implementation completely: Instead
@@ -60,11 +63,17 @@ function! DuplicateWrite#Add( target )
 	    call ingo#msg#ErrorMsg('No file name; either name the buffer or pass a full filespec')
 	    return
 	else
-	    let l:targetFilespec = ingo#fs#path#Combine(a:target, expand('%:t'))
+	    let l:targetFile = ingo#fs#path#Combine(a:target, expand('%:t'))
 	endif
     else
-	let l:targetFilespec = a:target
+	let l:targetFile = a:target
     endif
+
+    " To avoid that changes of the CWD affect the target location, expand to a
+    " full absolute path.
+    " Normalize all path separators to allow a simple string comparison for the
+    " duplicate check.
+    let l:targetFilespec = ingo#fs#path#Normalize(fnamemodify(l:targetFile, ':p'))
 
     augroup DuplicateWrite
 	autocmd! * <buffer>
@@ -90,7 +99,7 @@ function! DuplicateWrite#Add( target )
     augroup END
 
     if ! exists('b:DuplicateWrite') | let b:DuplicateWrite = [] | endif
-    if index(b:DuplicateWrite, l:targetFilespec) == -1
+    if index(b:DuplicateWrite, l:targetFilespec, 0, ingo#os#IsWinOrDos()) == -1
 	call add(b:DuplicateWrite, l:targetFilespec)
     else
 	call ingo#msg#WarningMsg(printf('A cascaded write to "%s" is already defined', l:targetFilespec))
