@@ -77,6 +77,20 @@ DEPENDENCIES					 *DuplicateWrite-dependencies*
 ==============================================================================
 CONFIGURATION					*DuplicateWrite-configuration*
 
+For a permanent configuration, put the following commands into your |vimrc|:
+	   *g:DuplicateWrite_DefaultMirrors* *b:DuplicateWrite_DefaultMirrors*
+To avoid giving an argument to |:DuplicateWrite|, you can define a List of
+{source-glob}, {target-base} pairs: The part of the buffer's filespec that
+matches {source-glob} will then be replaced by {target-base} to yield the
+target: >
+    let g:DuplicateWrite_DefaultMirrors = [
+    \	['D:\project\foo', 'X:\foo'],
+    \	['**\src\**\', 'E:\deploy']
+    \]
+This would for example duplicate a file D:\project\foo\bin\zap.cmd to
+X:\foo\bin\zap.cmd and any file anywhere inside a src/ directory directly to
+E:\deploy when you execute |:DuplicateWrite|.
+
 ==============================================================================
 INTEGRATION					  *DuplicateWrite-integration*
 							    *b:DuplicateWrite*
