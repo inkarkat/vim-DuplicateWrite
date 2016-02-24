@@ -1,0 +1,3 @@
+autoload/DuplicateWrite.vim
+plugin/DuplicateWrite.vim
+doc/DuplicateWrite.txt
