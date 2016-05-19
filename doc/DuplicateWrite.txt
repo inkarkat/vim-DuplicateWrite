@@ -30,6 +30,12 @@ HOW IT WORKS								     *
 The plugin hooks into the |BufWritePost| event to issue additional |:write!|
 commands.
 
+RELATED WORKS								     *
+
+- The FileSync plugin (vimscript #5064) can automatically sync files or
+  directory trees on write, using a Vim command like !cp, |netrw| plugin, or
+  custom function.
+
 ==============================================================================
 USAGE							*DuplicateWrite-usage*
 							   *:DuplicateWriteTo*
@@ -125,7 +131,7 @@ First published version after a complete reimplementation.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2005-2013 Ingo Karkat
+Copyright: (C) 2005-2014 Ingo Karkat
 The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
