@@ -6,7 +6,7 @@
 "   - ingo/msg.vim autoload script
 "   - ingo/os.vim autoload script
 "
-" Copyright: (C) 2005-2013 Ingo Karkat
+" Copyright: (C) 2005-2014 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
@@ -50,7 +50,7 @@ set cpo&vim
 function! DuplicateWrite#Off()
     try
 	execute 'autocmd! DuplicateWrite * <buffer>'
-    catch /^Vim\%((\a\+)\)\=:E216/ " E216: No such group or event
+    catch /^Vim\%((\a\+)\)\=:E216:/ " E216: No such group or event
 	call ingo#msg#ErrorMsg('No cascaded writes defined for this buffer')
     endtry
 
