@@ -35,6 +35,8 @@ RELATED WORKS								     *
 - The FileSync plugin (vimscript #5064) can automatically sync files or
   directory trees on write, using a Vim command like !cp, |netrw| plugin, or
   custom function.
+- The mirror.vim plugin (vimscript #5204) needs a mirror configuration, and
+  then provides custom commands to open, diff, push, etc. mirrored files.
 
 ==============================================================================
 USAGE							*DuplicateWrite-usage*
@@ -131,7 +133,7 @@ First published version after a complete reimplementation.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2005-2014 Ingo Karkat
+Copyright: (C) 2005-2016 Ingo Karkat
 The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
