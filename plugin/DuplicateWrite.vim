@@ -44,6 +44,9 @@ let g:loaded_DuplicateWrite = 1
 if ! exists('g:DuplicateWrite_DefaultMirrors')
     let g:DuplicateWrite_DefaultMirrors = []
 endif
+if ! exists('g:DuplicateWrite_EventIgnore')
+    let g:DuplicateWrite_EventIgnore = 'BufWritePre,BufWritePost'
+endif
 
 
 "- commands --------------------------------------------------------------------
