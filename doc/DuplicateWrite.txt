@@ -41,12 +41,14 @@ RELATED WORKS								     *
 ==============================================================================
 USAGE							*DuplicateWrite-usage*
 							   *:DuplicateWriteTo*
-:DuplicateWrite {file}|{dirspec}
+:DuplicateWrite [++opt] [+cmd] {file}|{dirspec} [...]
 			Create a cascaded write of the current buffer to the
 			specified {file}, or to a file with the same filename
 			located in {dirspec}. From now on, whenever the buffer
 			is |:w|ritten, it will also be persisted to the passed
-			location. (Until you |:bdelete| it.)
+			location. (Until you |:bdelete| it.) [++opt] is passed
+			to |:write|. An optional [+cmd] is executed before the
+			write.
 			You can issue the command multiple times (with
 			different {file} targets) for a buffer to add cascades
 			to several concurrent locations.
