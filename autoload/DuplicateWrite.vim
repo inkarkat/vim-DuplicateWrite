@@ -8,6 +8,7 @@
 "   - ingo/fs/path.vim autoload script
 "   - ingo/msg.vim autoload script
 "   - ingo/os.vim autoload script
+"   - ingo/plugin/setting.vim autoload script
 "
 " Copyright: (C) 2005-2016 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
@@ -15,6 +16,9 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.00.011	09-Jul-2016	ENH: Support passing [++opt] [+cmd] [-cmd]
+"				before filespecs, and allow multiple filespecs.
+"				Implement special undo handling with -[UNDO].
 "   1.01.010	13-Sep-2013	FIX: Use full absolute path and normalize to be
 "				immune against changes in CWD.
 "   1.00.009	13-Sep-2013	ENH: Check for a passed dirspec, and use the
@@ -50,6 +54,58 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+function! s:EnsureAutocmd()
+    if exists('#DuplicateWrite#BufWritePost#<buffer>')
+	return  | " Don't define twice.
+    endif
+
+    augroup DuplicateWrite
+	autocmd! * <buffer>
+	" Only trigger the duplicate write when the buffer is written with its
+	" original name, not via :write /somewhere/else.txt; we can find out via
+	" <afile>.
+	"
+	" Inside the loop, no new undo points are created. So, we need to invoke
+	" DuplicateWrite#SetUndoPoint() only once before the loop; each
+	" individual [+cmd] change by a duplicate write will then be undone to
+	" that.
+	autocmd BufWritePost <buffer> nested
+	\   if ! exists('b:DuplicateWrite_Working') && expand('<afile>') ==# expand('%') |
+	\       try |
+	\           let b:DuplicateWrite_Working = 1 |
+	\           let g:DuplicateWrite_SaveEventIgnore = &eventignore | let &eventignore = g:DuplicateWrite_EventIgnore |
+	\           call DuplicateWrite#SetUndoPoint() |
+	\           for g:DuplicateWrite_Object in b:DuplicateWrite |
+	\               try |
+	\                   execute g:DuplicateWrite_Object.preCmd |
+	\                   execute "keepalt write!" join(map(g:DuplicateWrite_Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite_Object.filespec) |
+	\                   if g:DuplicateWrite_Object.postCmd ==# 'UNDO' |
+	\                       call DuplicateWrite#Undo() |
+	\                   else |
+	\                       execute g:DuplicateWrite_Object.postCmd |
+	\                   endif |
+	\               catch /^Vim\%((\a\+)\)\=:/ |
+	\                   call ingo#msg#VimExceptionMsg() |
+	\                   sleep 1 |
+	\               endtry |
+	\           endfor |
+	\       finally |
+	\           let &eventignore = g:DuplicateWrite_SaveEventIgnore |
+	\           unlet g:DuplicateWrite_Object g:DuplicateWrite_SaveEventIgnore b:DuplicateWrite_Working |
+	\       endtry |
+	\   endif
+	" Use try...catch to prevent the first write error from cancelling all
+	" further cascaded writes.
+	" To avoid that the error message is overwritten by subsequent
+	" successful cascaded writes (and their potentially triggered autocmds),
+	" wait for a second. The user can recall the error with :messages later.
+
+	" Clear the autocmds, as they survive when the :bdelete'd buffer is
+	" revived via :buffer.
+	autocmd BufDelete <buffer> autocmd! DuplicateWrite * <buffer>
+    augroup END
+endfunction
+
 function! DuplicateWrite#Off()
     unlet! b:DuplicateWrite
 
@@ -63,10 +119,23 @@ function! DuplicateWrite#Off()
 endfunction
 
 function! DuplicateWrite#Add( filePatternsString )
+    if empty(a:filePatternsString)
+	return s:AddDefaultMirrors()
+    endif
+
     let l:filePatterns = ingo#cmdargs#file#SplitAndUnescape(a:filePatternsString)
 
     " Strip off the optional ++opt +cmd file options and commands.
     let [l:filePatterns, l:fileOptionsAndCommands] = ingo#cmdargs#file#FilterFileOptionsAndCommands(l:filePatterns)
+
+    let l:preCmd = (get(l:fileOptionsAndCommands, -1, '') =~# '^++\@!' ? remove(l:fileOptionsAndCommands, -1)[1:] : '')
+    let l:opt = l:fileOptionsAndCommands
+
+    " Strip off the optional -cmd file commands. As these are not Vim syntax, it
+    " needs to be done separately.
+    let l:postCmd = (get(l:filePatterns, 0, '') =~# '^-' ? remove(l:filePatterns, 0) : '')
+    let l:postCmd = (l:postCmd ==# '-' ? 'UNDO' : l:postCmd[1:])
+
     let l:filespecs = ingo#cmdargs#glob#Expand(l:filePatterns, 1, 1)
 
     if len(l:filespecs) == 0
@@ -77,14 +146,46 @@ function! DuplicateWrite#Add( filePatternsString )
     call ingo#err#Set('No file(s) have been added') " This may be overwritten by more specific errors in s:Add().
     let l:cnt = 0
     for l:filespec in l:filespecs
-	if s:Add(l:fileOptionsAndCommands, l:filespec)
+	if s:Add(l:opt, l:preCmd, l:postCmd, l:filespec)
 	    let l:cnt += 1
 	endif
     endfor
 
     return (l:cnt > 0)
 endfunction
-function! s:Add( fileOptionsAndCommands, target )
+function! s:AddDefaultMirrors()
+    let l:configuration = ingo#plugin#setting#GetBufferLocal('DuplicateWrite_DefaultMirrors')
+    call ingo#err#Set('No file(s) passed, and no default mirrors ' . (empty(l:configuration) ? 'defined' : 'apply')) " This may be overwritten by more specific errors in s:Add().
+
+    let l:originalFilespec = expand('%:p')
+    let l:cnt = 0
+    for [l:sourceGlob, l:argumentObject] in l:configuration
+	let l:commonBase = matchstr(
+	\   l:originalFilespec,
+	\   (ingo#fs#path#IsCaseInsensitive(l:originalFilespec) ? '\c' : '\C') . ingo#regexp#fromwildcard#AnchoredToPathBoundaries(l:sourceGlob)
+	\)
+	if empty(l:commonBase)
+	    continue
+	endif
+
+	let l:pathToFile = strpart(l:originalFilespec, strlen(l:commonBase))
+	let l:filespec = ingo#fs#path#Normalize(
+	\   empty(l:pathToFile) ?
+	\       l:argumentObject.pathspec :
+	\       ingo#fs#path#Combine(l:argumentObject.pathspec, l:pathToFile)
+	\)
+	if s:Add(ingo#list#Make(get(l:argumentObject, 'opt', [])), get(l:argumentObject, 'preCmd', ''), get(l:argumentObject, 'postCmd', ''), l:filespec)
+	    let l:cnt += 1
+
+	    call ingo#msg#StatusMsg(printf('Added duplicate write based on "%s" to %s',
+	    \   l:sourceGlob,
+	    \   s:ToString({'opt': ingo#list#Make(get(l:argumentObject, 'opt', [])), 'preCmd': get(l:argumentObject, 'preCmd', ''), 'postCmd': get(l:argumentObject, 'postCmd', ''), 'filespec': l:filespec}
+	    \)))
+	endif
+    endfor
+    return (l:cnt > 0)
+endfunction
+function! s:Add( opt, preCmd, postCmd, target )
     if isdirectory(a:target)
 	if empty(expand('%:t'))
 	    call ingo#err#Set('No file name; either name the buffer or pass a full filespec')
@@ -108,34 +209,9 @@ function! s:Add( fileOptionsAndCommands, target )
 	return 0
     endif
 
-    let l:cmd = (get(a:fileOptionsAndCommands, -1, '') =~# '^++\@!' ? remove(a:fileOptionsAndCommands, -1)[1:] : '')
-    let l:opt = a:fileOptionsAndCommands
+    call s:EnsureAutocmd()
 
-    augroup DuplicateWrite
-	autocmd! * <buffer>
-	autocmd BufWritePost <buffer>
-	\   for g:DuplicateWrite_Object in b:DuplicateWrite |
-	\       try |
-	\           execute g:DuplicateWrite_Object.cmd |
-	\           execute "keepalt write!" join(map(g:DuplicateWrite_Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite_Object.filespec) |
-	\       catch /^Vim\%((\a\+)\)\=:/ |
-	\           call ingo#msg#VimExceptionMsg() |
-	\           sleep 1 |
-	\       endtry |
-	\   endfor |
-	\   unlet g:DuplicateWrite_Object
-	" Use try...catch to prevent the first write error from cancelling all
-	" further cascaded writes.
-	" To avoid that the error message is overwritten by subsequent
-	" successful cascaded writes (and their potentially triggered autocmds),
-	" wait for a second. The user can recall the error with :messages later.
-
-	" Clear the autocmds, as they survive when the :bdelete'd buffer is
-	" revived via :buffer.
-	autocmd BufDelete <buffer> autocmd! DuplicateWrite * <buffer>
-    augroup END
-
-    let l:object = { 'filespec': l:targetFilespec, 'opt': l:opt, 'cmd': l:cmd }
+    let l:object = { 'filespec': l:targetFilespec, 'opt': a:opt, 'preCmd': a:preCmd, 'postCmd': a:postCmd }
 
     if ! exists('b:DuplicateWrite') | let b:DuplicateWrite = [] | endif
     let l:idx = index(
@@ -159,7 +235,8 @@ endfunction
 function! s:ToString( object )
     return join(
     \   map(copy(a:object.opt), "escape(v:val, '\\ ')") +
-    \   (empty(a:object.cmd) ? [] : [escape(a:object.cmd, '\ ')]) +
+    \   (empty(a:object.preCmd) ? [] : ['+' . escape(a:object.preCmd, '\ ')]) +
+    \   (empty(a:object.postCmd) ? [] : ['-' . escape(a:object.postCmd, '\ ')]) +
     \   ['"' . a:object.filespec . '"']
     \)
 endfunction
@@ -191,6 +268,37 @@ function! DuplicateWrite#ListAll()
 	return 0
     endif
     return 1
+endfunction
+
+
+function! DuplicateWrite#SetUndoPoint()
+    let b:DuplicateWrite_Undo = { 'changenumber': changenr(), 'view': winsaveview() }
+endfunction
+function! s:Revert()
+    let l:save_view = winsaveview()
+	silent %delete _
+	keepalt 1read
+	silent 1delete _
+    call winrestview(l:save_view)
+    setlocal nomodified
+endfunction
+function! DuplicateWrite#Undo()
+    let l:undoChangeNumber = b:DuplicateWrite_Undo.changenumber
+    if l:undoChangeNumber < 0
+	if &l:modified
+	    " Undo is not available. (Soft-)reload the buffer instead.
+	    call s:Revert()
+	endif
+    endif
+    if changenr() > l:undoChangeNumber
+	" What ever [+cmd] did, it is counted as a single change. So we don't
+	" need to supply l:undoChangeNumber here. That's why we also could use
+	" simple changenr() in DuplicateWrite#SetUndoPoint(), not the more
+	" elaborate ingo#undo#GetChangeNumber().
+	silent undo
+    endif
+
+    call winrestview(b:DuplicateWrite_Undo.view)
 endfunction
 
 let &cpo = s:save_cpo
