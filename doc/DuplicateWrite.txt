@@ -41,14 +41,16 @@ RELATED WORKS								     *
 ==============================================================================
 USAGE							*DuplicateWrite-usage*
 							   *:DuplicateWriteTo*
-:DuplicateWrite [++opt] [+cmd] {file}|{dirspec} [...]
+:DuplicateWrite [++opt] [+cmd] [-cmd] {file}|{dirspec} [...]
 			Create a cascaded write of the current buffer to the
 			specified {file}, or to a file with the same filename
 			located in {dirspec}. From now on, whenever the buffer
 			is |:w|ritten, it will also be persisted to the passed
 			location. (Until you |:bdelete| it.) [++opt] is passed
 			to |:write|. An optional [+cmd] is executed before the
-			write.
+			write; likewise, [-cmd] is executed after the write;
+			the degenerate [-] will |:undo| any changes to the
+			buffer done by [+cmd].
 			You can issue the command multiple times (with
 			different {file} targets) for a buffer to add cascades
 			to several concurrent locations.
@@ -81,7 +83,7 @@ To uninstall, use the |:RmVimball| command.
 DEPENDENCIES					 *DuplicateWrite-dependencies*
 
 - Requires Vim 7.0 or higher.
-- Requires the |ingo-library.vim| plugin (vimscript #4433), version 1.013 or
+- Requires the |ingo-library.vim| plugin (vimscript #4433), version 1.025 or
   higher.
 
 ==============================================================================
@@ -90,17 +92,33 @@ CONFIGURATION					*DuplicateWrite-configuration*
 For a permanent configuration, put the following commands into your |vimrc|:
 	   *g:DuplicateWrite_DefaultMirrors* *b:DuplicateWrite_DefaultMirrors*
 To avoid giving an argument to |:DuplicateWrite|, you can define a List of
-{source-glob}, {target-base} pairs: The part of the buffer's filespec that
-matches {source-glob} will then be replaced by {target-base} to yield the
-target: >
+{source-glob}, {argument-object} pairs: The part of the buffer's filespec that
+matches {source-glob} will then be replaced by {argument-object}.pathspec to
+yield the target: >
     let g:DuplicateWrite_DefaultMirrors = [
-    \	['D:\project\foo', 'X:\foo'],
-    \	['**\src\**\', 'E:\deploy']
+    \	['D:\project\foo', {'pathspec': 'X:\foo'}],
+    \	['**\src\**', {
+    \			'pathspec': 'E:\deploy',
+    \			'opt': '++ff=dos',
+    \			'preCmd': '%s/Copyright: \zsXXXX/Acme Corp/e,
+    \			'postCmd': 'UNDO'
+    \		      }]
     \]
 This would for example duplicate a file D:\project\foo\bin\zap.cmd to
 X:\foo\bin\zap.cmd and any file anywhere inside a src/ directory directly to
-E:\deploy when you execute |:DuplicateWrite|.
+E:\deploy when you execute |:DuplicateWrite|. A buffer-local configuration
+overrides the global one. All matching {source-glob} are processed, so if you
+need to duplicate to multiple locations, define several same {source-glob}s.
 
+						*g:DuplicateWrite_EventIgnore*
+The duplicate writes themselves also trigger |autocmd|s; we need this nesting
+to let plugins like |netrw| interfere and handle special (remote) filesystem
+locations. However, other plugins may also be triggered, and that may be
+undesirable (for example, you don't want to trigger syntax checking on the
+duplicates, or add them to a MRU list in Vim). Because of this, the plugin
+ignores certain events (via 'eventignore') during its execution: >
+    let g:DuplicateWrite_EventIgnore = 'BufWritePre,BufWritePost'
+<
 ==============================================================================
 INTEGRATION					  *DuplicateWrite-integration*
 							    *b:DuplicateWrite*
@@ -123,10 +141,15 @@ IDEAS							*DuplicateWrite-ideas*
 ==============================================================================
 HISTORY						      *DuplicateWrite-history*
 
+2.00	RELEASEME
+- ENH: Support passing [++opt] [+cmd] [-cmd] before filespecs, and allow
+  multiple filespec arguments to :DuplicateWrite.
+  *** You need to update to ingo-library (vimscript #4433) version 1.025! ***
+
 1.01	13-Sep-2013
 - FIX: Use full absolute path and normalize to be immune against changes in
   CWD.
-- *** You need to update to ingo-library (vimscript #4433) version 1.013! ***
+  *** You need to update to ingo-library (vimscript #4433) version 1.013! ***
 
 1.00	13-Sep-2013
 First published version after a complete reimplementation.
