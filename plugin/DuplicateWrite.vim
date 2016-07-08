@@ -39,7 +39,16 @@ if exists('g:loaded_DuplicateWrite') || (v:version < 700)
 endif
 let g:loaded_DuplicateWrite = 1
 
-command! -bar -nargs=+ -complete=file DuplicateWrite if ! DuplicateWrite#Add(<q-args>) | echoerr ingo#err#Get() | endif
+"- configuration ---------------------------------------------------------------
+
+if ! exists('g:DuplicateWrite_DefaultMirrors')
+    let g:DuplicateWrite_DefaultMirrors = []
+endif
+
+
+"- commands --------------------------------------------------------------------
+
+command! -bar -nargs=* -complete=file DuplicateWrite if ! DuplicateWrite#Add(<q-args>) | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteOff if ! DuplicateWrite#Off() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteList if ! DuplicateWrite#List() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteListAll if ! DuplicateWrite#ListAll() | echoerr ingo#err#Get() | endif
