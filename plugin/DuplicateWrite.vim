@@ -3,13 +3,17 @@
 " DEPENDENCIES:
 "   - Requires Vim 7.0 or higher.
 "   - DuplicateWrite.vim autoload script
+"   - ingo/err.vim autoload script
 "
-" Copyright: (C) 2005-2013 Ingo Karkat
+" Copyright: (C) 2005-2016 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.00.009	08-Jul-2016	ENH: Allow multiple arguments to
+"				:DuplicateWrite, including [++opt] [+cmd].
+"				Use ingo/err.vim.
 "   1.00.008	13-Sep-2013	Add -bar.
 "				Adapt the invoked functions to the completely
 "				changed implementation.
@@ -35,9 +39,9 @@ if exists('g:loaded_DuplicateWrite') || (v:version < 700)
 endif
 let g:loaded_DuplicateWrite = 1
 
-command! -bar -nargs=1 -complete=file DuplicateWrite call DuplicateWrite#Add(<q-args>)
-command! -bar DuplicateWriteOff call DuplicateWrite#Off()
-command! -bar DuplicateWriteList call DuplicateWrite#List()
-command! -bar DuplicateWriteListAll call DuplicateWrite#ListAll()
+command! -bar -nargs=+ -complete=file DuplicateWrite if ! DuplicateWrite#Add(<q-args>) | echoerr ingo#err#Get() | endif
+command! -bar DuplicateWriteOff if ! DuplicateWrite#Off() | echoerr ingo#err#Get() | endif
+command! -bar DuplicateWriteList if ! DuplicateWrite#List() | echoerr ingo#err#Get() | endif
+command! -bar DuplicateWriteListAll if ! DuplicateWrite#ListAll() | echoerr ingo#err#Get() | endif
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
