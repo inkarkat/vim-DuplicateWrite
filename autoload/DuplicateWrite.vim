@@ -19,6 +19,18 @@
 "   2.00.011	09-Jul-2016	ENH: Support passing [++opt] [+cmd] [-cmd]
 "				before filespecs, and allow multiple filespecs.
 "				Implement special undo handling with -[UNDO].
+"				ENH: Add default mirror configuration in
+"				g:DuplicateWrite_DefaultMirrors, implemented in
+"				s:AddDefaultMirrors().
+"				Factor out s:EnsureAutocmd().
+"				Use nested autocmds, but allow to suppress
+"				certain events via g:DuplicateWrite_EventIgnore.
+"				ENH: Check for existence of target directory in
+"				DuplicateWrite#TargetDirectoryCheck(), and
+"				create it if desired.
+"				Rename DuplicateWrite#Add() to
+"				DuplicateWrite#Command(), and expose s:Add() as
+"				the former, also as an integration point.
 "   1.01.010	13-Sep-2013	FIX: Use full absolute path and normalize to be
 "				immune against changes in CWD.
 "   1.00.009	13-Sep-2013	ENH: Check for a passed dirspec, and use the
@@ -54,6 +66,39 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+function! DuplicateWrite#TargetDirectoryCheck( filespec )
+    let l:dirspec = fnamemodify(a:filespec, ':h')
+    if isdirectory(l:dirspec)
+	return 1
+    elseif g:DuplicateWrite_CreateNonExistingTargetDirectory ==# 'no'
+	throw printf('DuplicateWrite: Cannot write "%s"; target directory does not exist', fnamemodify(a:filespec, ':~:.'))
+    elseif g:DuplicateWrite_CreateNonExistingTargetDirectory ==# 'ask'
+	let l:recalledResponse = (exists('g:DuplicateWrite_CreateDirResponse') ? g:DuplicateWrite_CreateDirResponse : -1)
+	let l:response = (l:recalledResponse == -1 ?
+	\   confirm(
+	\       printf('The directory "%s" to write "%s" does not exist yet, create it?',
+	\           l:dirspec, fnamemodify(a:filespec, ':t')
+	\       ),
+	\       "&Yes\n&No\n&Always\nNe&ver", 1, 'Question') :
+	\   l:recalledResponse
+	\)
+	if     l:response == 1 || l:response == 3
+	    if l:response == 3
+		let g:DuplicateWrite_CreateDirResponse = 3
+	    endif
+	elseif l:response == 2
+	    call ingo#msg#WarningMsg(printf('Skipping write to "%s"; target directory does not exist', fnamemodify(a:filespec, ':~:.')))
+	    return 0
+	elseif l:response == 4
+	    let g:DuplicateWrite_CreateDirResponse = 4
+	    call ingo#msg#WarningMsg(printf('Skipping write to "%s"; target directory does not exist', fnamemodify(a:filespec, ':~:.')))
+	    return 0
+	endif
+    endif
+
+    call mkdir(l:dirspec, 'p')
+    return 1
+endfunction
 function! s:EnsureAutocmd()
     if exists('#DuplicateWrite#BufWritePost#<buffer>')
 	return  | " Don't define twice.
@@ -77,6 +122,7 @@ function! s:EnsureAutocmd()
 	\           call DuplicateWrite#SetUndoPoint() |
 	\           for g:DuplicateWrite_Object in b:DuplicateWrite |
 	\               try |
+	\                   if ! DuplicateWrite#TargetDirectoryCheck(g:DuplicateWrite_Object.filespec) | continue | endif |
 	\                   execute g:DuplicateWrite_Object.preCmd |
 	\                   execute "keepalt write!" join(map(g:DuplicateWrite_Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite_Object.filespec) |
 	\                   if g:DuplicateWrite_Object.postCmd ==# 'UNDO' |
@@ -86,6 +132,9 @@ function! s:EnsureAutocmd()
 	\                   endif |
 	\               catch /^Vim\%((\a\+)\)\=:/ |
 	\                   call ingo#msg#VimExceptionMsg() |
+	\                   sleep 1 |
+	\               catch /^DuplicateWrite:/ |
+	\                   call ingo#msg#CustomExceptionMsg('DuplicateWrite') |
 	\                   sleep 1 |
 	\               endtry |
 	\           endfor |
@@ -118,7 +167,7 @@ function! DuplicateWrite#Off()
     endtry
 endfunction
 
-function! DuplicateWrite#Add( filePatternsString )
+function! DuplicateWrite#Command( filePatternsString )
     if empty(a:filePatternsString)
 	return s:AddDefaultMirrors()
     endif
@@ -143,10 +192,10 @@ function! DuplicateWrite#Add( filePatternsString )
 	return 0
     endif
 
-    call ingo#err#Set('No file(s) have been added') " This may be overwritten by more specific errors in s:Add().
+    call ingo#err#Set('No file(s) have been added') " This may be overwritten by more specific errors in DuplicateWrite#Add().
     let l:cnt = 0
     for l:filespec in l:filespecs
-	if s:Add(l:opt, l:preCmd, l:postCmd, l:filespec)
+	if DuplicateWrite#Add(l:opt, l:preCmd, l:postCmd, l:filespec)
 	    let l:cnt += 1
 	endif
     endfor
@@ -155,7 +204,7 @@ function! DuplicateWrite#Add( filePatternsString )
 endfunction
 function! s:AddDefaultMirrors()
     let l:configuration = ingo#plugin#setting#GetBufferLocal('DuplicateWrite_DefaultMirrors')
-    call ingo#err#Set('No file(s) passed, and no default mirrors ' . (empty(l:configuration) ? 'defined' : 'apply')) " This may be overwritten by more specific errors in s:Add().
+    call ingo#err#Set('No file(s) passed, and no default mirrors ' . (empty(l:configuration) ? 'defined' : 'apply')) " This may be overwritten by more specific errors in DuplicateWrite#Add().
 
     let l:originalFilespec = expand('%:p')
     let l:cnt = 0
@@ -174,7 +223,7 @@ function! s:AddDefaultMirrors()
 	\       l:argumentObject.pathspec :
 	\       ingo#fs#path#Combine(l:argumentObject.pathspec, l:pathToFile)
 	\)
-	if s:Add(ingo#list#Make(get(l:argumentObject, 'opt', [])), get(l:argumentObject, 'preCmd', ''), get(l:argumentObject, 'postCmd', ''), l:filespec)
+	if DuplicateWrite#Add(ingo#list#Make(get(l:argumentObject, 'opt', [])), get(l:argumentObject, 'preCmd', ''), get(l:argumentObject, 'postCmd', ''), l:filespec)
 	    let l:cnt += 1
 
 	    call ingo#msg#StatusMsg(printf('Added duplicate write based on "%s" to %s',
@@ -185,7 +234,7 @@ function! s:AddDefaultMirrors()
     endfor
     return (l:cnt > 0)
 endfunction
-function! s:Add( opt, preCmd, postCmd, target )
+function! DuplicateWrite#Add( opt, preCmd, postCmd, target )
     if isdirectory(a:target)
 	if empty(expand('%:t'))
 	    call ingo#err#Set('No file name; either name the buffer or pass a full filespec')
