@@ -11,6 +11,15 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.00.010	09-Jul-2016	ENH: Add default mirror configuration in
+"				g:DuplicateWrite_DefaultMirrors.
+"				Use nested autocmds, but allow to suppress
+"				certain events via g:DuplicateWrite_EventIgnore.
+"				ENH: Check for existence of target directory,
+"				and react according to
+"				g:DuplicateWrite_CreateNonExistingTargetDirectory.
+"				Rename DuplicateWrite#Add() to
+"				DuplicateWrite#Command().
 "   2.00.009	08-Jul-2016	ENH: Allow multiple arguments to
 "				:DuplicateWrite, including [++opt] [+cmd].
 "				Use ingo/err.vim.
@@ -47,11 +56,14 @@ endif
 if ! exists('g:DuplicateWrite_EventIgnore')
     let g:DuplicateWrite_EventIgnore = 'BufWritePre,BufWritePost'
 endif
+if ! exists('g:DuplicateWrite_CreateNonExistingTargetDirectory')
+    let g:DuplicateWrite_CreateNonExistingTargetDirectory = 'ask'
+endif
 
 
 "- commands --------------------------------------------------------------------
 
-command! -bar -nargs=* -complete=file DuplicateWrite if ! DuplicateWrite#Add(<q-args>) | echoerr ingo#err#Get() | endif
+command! -bar -nargs=* -complete=file DuplicateWrite if ! DuplicateWrite#Command(<q-args>) | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteOff if ! DuplicateWrite#Off() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteList if ! DuplicateWrite#List() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteListAll if ! DuplicateWrite#ListAll() | echoerr ingo#err#Get() | endif
