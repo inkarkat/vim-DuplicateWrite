@@ -16,6 +16,8 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.00.012	11-Jul-2016	ENH: Support duplicate write only with :write,
+"				via additional 'bang' attribute.
 "   2.00.011	09-Jul-2016	ENH: Support passing [++opt] [+cmd] [-cmd]
 "				before filespecs, and allow multiple filespecs.
 "				Implement special undo handling with -[UNDO].
@@ -122,6 +124,7 @@ function! s:EnsureAutocmd()
 	\           call DuplicateWrite#SetUndoPoint() |
 	\           for g:DuplicateWrite_Object in b:DuplicateWrite |
 	\               try |
+	\                   if g:DuplicateWrite_Object.bang && ! v:cmdbang | continue | endif |
 	\                   if ! DuplicateWrite#TargetDirectoryCheck(g:DuplicateWrite_Object.filespec) | continue | endif |
 	\                   execute g:DuplicateWrite_Object.preCmd |
 	\                   execute "keepalt write!" join(map(g:DuplicateWrite_Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite_Object.filespec) |
@@ -167,7 +170,7 @@ function! DuplicateWrite#Off()
     endtry
 endfunction
 
-function! DuplicateWrite#Command( filePatternsString )
+function! DuplicateWrite#Command( bang, filePatternsString )
     if empty(a:filePatternsString)
 	return s:AddDefaultMirrors()
     endif
@@ -195,7 +198,7 @@ function! DuplicateWrite#Command( filePatternsString )
     call ingo#err#Set('No file(s) have been added') " This may be overwritten by more specific errors in DuplicateWrite#Add().
     let l:cnt = 0
     for l:filespec in l:filespecs
-	if DuplicateWrite#Add(l:opt, l:preCmd, l:postCmd, l:filespec)
+	if DuplicateWrite#Add(a:bang, l:opt, l:preCmd, l:postCmd, l:filespec)
 	    let l:cnt += 1
 	endif
     endfor
@@ -223,18 +226,30 @@ function! s:AddDefaultMirrors()
 	\       l:argumentObject.pathspec :
 	\       ingo#fs#path#Combine(l:argumentObject.pathspec, l:pathToFile)
 	\)
-	if DuplicateWrite#Add(ingo#list#Make(get(l:argumentObject, 'opt', [])), get(l:argumentObject, 'preCmd', ''), get(l:argumentObject, 'postCmd', ''), l:filespec)
+	if DuplicateWrite#Add(
+	\   get(l:argumentObject, 'bang', 0),
+	\   ingo#list#Make(get(l:argumentObject, 'opt', [])),
+	\   get(l:argumentObject, 'preCmd', ''),
+	\   get(l:argumentObject, 'postCmd', ''),
+	\   l:filespec
+	\)
 	    let l:cnt += 1
 
 	    call ingo#msg#StatusMsg(printf('Added duplicate write based on "%s" to %s',
 	    \   l:sourceGlob,
-	    \   s:ToString({'opt': ingo#list#Make(get(l:argumentObject, 'opt', [])), 'preCmd': get(l:argumentObject, 'preCmd', ''), 'postCmd': get(l:argumentObject, 'postCmd', ''), 'filespec': l:filespec}
+	    \   s:ToString({
+	    \       'bang': get(l:argumentObject, 'bang', 0),
+	    \       'opt': ingo#list#Make(get(l:argumentObject, 'opt', [])),
+	    \       'preCmd': get(l:argumentObject, 'preCmd', ''),
+	    \       'postCmd': get(l:argumentObject, 'postCmd', ''),
+	    \       'filespec': l:filespec
+	    \   }
 	    \)))
 	endif
     endfor
     return (l:cnt > 0)
 endfunction
-function! DuplicateWrite#Add( opt, preCmd, postCmd, target )
+function! DuplicateWrite#Add( bang, opt, preCmd, postCmd, target )
     if isdirectory(a:target)
 	if empty(expand('%:t'))
 	    call ingo#err#Set('No file name; either name the buffer or pass a full filespec')
@@ -260,7 +275,7 @@ function! DuplicateWrite#Add( opt, preCmd, postCmd, target )
 
     call s:EnsureAutocmd()
 
-    let l:object = { 'filespec': l:targetFilespec, 'opt': a:opt, 'preCmd': a:preCmd, 'postCmd': a:postCmd }
+    let l:object = { 'filespec': l:targetFilespec, 'bang': a:bang, 'opt': a:opt, 'preCmd': a:preCmd, 'postCmd': a:postCmd }
 
     if ! exists('b:DuplicateWrite') | let b:DuplicateWrite = [] | endif
     let l:idx = index(
@@ -283,6 +298,7 @@ endfunction
 
 function! s:ToString( object )
     return join(
+    \   [a:object.bang ? '!' : ' '] +
     \   map(copy(a:object.opt), "escape(v:val, '\\ ')") +
     \   (empty(a:object.preCmd) ? [] : ['+' . escape(a:object.preCmd, '\ ')]) +
     \   (empty(a:object.postCmd) ? [] : ['-' . escape(a:object.postCmd, '\ ')]) +
