@@ -21,13 +21,14 @@ location whenever it is changed.
 This plugin defines a |:DuplicateWrite| command that sets up additional
 |:write| targets. From then on, whenever you save that buffer, the write is
 cascaded to the additional files. Thus, when editing a script in your project
-directory, you can have it immediately copied to the install directory that is
-in the PATH. Or, with the help of the |netrw| plugin, you can even
-automatically upload a locally edited HTML page to the remote web server.
+directory, you can have it immediately (on only on demand, with [!]) copied to
+the install directory that is in the PATH. Or, with the help of the |netrw|
+plugin, you can even automatically upload a locally edited HTML page to the
+remote web server.
 
 HOW IT WORKS								     *
 
-The plugin hooks into the |BufWritePost| event to issue additional |:write!|
+The plugin hooks into the |BufWritePost| event to issue additional |:write|
 commands.
 
 RELATED WORKS								     *
@@ -41,16 +42,21 @@ RELATED WORKS								     *
 ==============================================================================
 USAGE							*DuplicateWrite-usage*
 							   *:DuplicateWriteTo*
-:DuplicateWrite [++opt] [+cmd] [-cmd] {file}|{dirspec} [...]
+:DuplicateWrite[!] [++opt] [+cmd] [-cmd] {file}|{dirspec} [...]
 			Create a cascaded write of the current buffer to the
 			specified {file}, or to a file with the same filename
 			located in {dirspec}. From now on, whenever the buffer
 			is |:w|ritten, it will also be persisted to the passed
-			location. (Until you |:bdelete| it.) [++opt] is passed
-			to |:write|. An optional [+cmd] is executed before the
-			write; likewise, [-cmd] is executed after the write;
-			the degenerate [-] will |:undo| any changes to the
-			buffer done by [+cmd].
+			location. (Until you |:bdelete| it.)
+			With [!], duplication only happens with forced
+			|:write!|, not with |:write|. This is useful if the
+			duplication target is on a slow networked filesystem
+			or if a file write triggers other costly actions
+			(like a service restart after a config update).
+			[++opt] is passed to |:write|. An optional [+cmd] is
+			executed before the write; likewise, [-cmd] is
+			executed after the write; the degenerate [-] will
+			|:undo| any changes to the buffer done by [+cmd].
 			You can issue the command multiple times (with
 			different {file} targets) for a buffer to add cascades
 			to several concurrent locations.
@@ -99,6 +105,7 @@ yield the target: >
     \	['D:\project\foo', {'pathspec': 'X:\foo'}],
     \	['**\src\**', {
     \			'pathspec': 'E:\deploy',
+    \			'bang': 0,
     \			'opt': '++ff=dos',
     \			'preCmd': '%s/Copyright: \zsXXXX/Acme Corp/e,
     \			'postCmd': 'UNDO'
@@ -118,6 +125,11 @@ undesirable (for example, you don't want to trigger syntax checking on the
 duplicates, or add them to a MRU list in Vim). Because of this, the plugin
 ignores certain events (via 'eventignore') during its execution: >
     let g:DuplicateWrite_EventIgnore = 'BufWritePre,BufWritePost'
+<			   *g:DuplicateWrite_CreateNonExistingTargetDirectory*
+Especially when using default mirrors, the target directory for the duplicated
+write may not exist yet. The following variable defines the plugin's behavior
+in that case; either "no", "yes", or "ask": >
+    let g:DuplicateWrite_CreateNonExistingTargetDirectory = 'ask'
 <
 ==============================================================================
 INTEGRATION					  *DuplicateWrite-integration*
@@ -125,9 +137,8 @@ INTEGRATION					  *DuplicateWrite-integration*
 The filespecs of the cascaded write targets are stored in the buffer-local
 List variable b:DuplicateWrite. You can use its existence / number of elements
 to determine whether / how many duplications are configured, and use this e.g.
-in a custom 'statusline'. If you're careful, you can also manipulate the
-filespecs (but |:DuplicateWrite| needs to be invoked at least once per buffer
-to set up the required autocmds).
+in a custom 'statusline'. To programatically add duplicate writes, use the
+DuplicateWrite#Add() function.
 
 ==============================================================================
 LIMITATIONS					  *DuplicateWrite-limitations*
@@ -144,6 +155,13 @@ HISTORY						      *DuplicateWrite-history*
 2.00	RELEASEME
 - ENH: Support passing [++opt] [+cmd] [-cmd] before filespecs, and allow
   multiple filespec arguments to :DuplicateWrite.
+- ENH: Add default mirror configuration in g:DuplicateWrite_DefaultMirrors.
+- Use nested autocmds, but allow to suppress certain events via
+  g:DuplicateWrite_EventIgnore.
+- ENH: Check for existence of target directory, and react according to
+  g:DuplicateWrite_CreateNonExistingTargetDirectory.
+- ENH: Support duplicate write only with :write when using :DuplicateWrite!
+  during definition.
   *** You need to update to ingo-library (vimscript #4433) version 1.025! ***
 
 1.01	13-Sep-2013
