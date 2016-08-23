@@ -41,7 +41,7 @@ RELATED WORKS								     *
 
 ==============================================================================
 USAGE							*DuplicateWrite-usage*
-							   *:DuplicateWriteTo*
+							     *:DuplicateWrite*
 :DuplicateWrite[!] [++opt] [+cmd] [-cmd] {file}|{dirspec} [...]
 			Create a cascaded write of the current buffer to the
 			specified {file}, or to a file with the same filename
@@ -57,6 +57,12 @@ USAGE							*DuplicateWrite-usage*
 			executed before the write; likewise, [-cmd] is
 			executed after the write; the degenerate [-] will
 			|:undo| any changes to the buffer done by [+cmd].
+			In the {cmd}s, spaces and also special characters
+			(|cmdline-special|) like % and <cword> must be
+			escaped. The plugin supports a special <tfile>
+			identifer that gets replaced with the duplicated
+			target file.
+
 			You can issue the command multiple times (with
 			different {file} targets) for a buffer to add cascades
 			to several concurrent locations.
