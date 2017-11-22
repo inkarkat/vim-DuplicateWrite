@@ -5,12 +5,16 @@
 "   - DuplicateWrite.vim autoload script
 "   - ingo/err.vim autoload script
 "
-" Copyright: (C) 2005-2016 Ingo Karkat
+" Copyright: (C) 2005-2017 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.01.012	23-Nov-2017	The target directory check interferes with
+"				remote (netrw) targets. Add
+"				g:DuplicateWrite_TargetDirectoryCheckIgnorePattern
+"				configuration that skips URIs by default.
 "   2.00.011	11-Jul-2016	ENH: Support duplicate write only with :write
 "				when using :DuplicateWrite! during definition.
 "   2.00.010	09-Jul-2016	ENH: Add default mirror configuration in
@@ -60,6 +64,9 @@ if ! exists('g:DuplicateWrite_EventIgnore')
 endif
 if ! exists('g:DuplicateWrite_CreateNonExistingTargetDirectory')
     let g:DuplicateWrite_CreateNonExistingTargetDirectory = 'ask'
+endif
+if ! exists('g:DuplicateWrite_TargetDirectoryCheckIgnorePattern')
+    let g:DuplicateWrite_TargetDirectoryCheckIgnorePattern = '^\a\+://'
 endif
 
 
