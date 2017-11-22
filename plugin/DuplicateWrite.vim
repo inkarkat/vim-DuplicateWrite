@@ -11,6 +11,8 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.00.011	11-Jul-2016	ENH: Support duplicate write only with :write
+"				when using :DuplicateWrite! during definition.
 "   2.00.010	09-Jul-2016	ENH: Add default mirror configuration in
 "				g:DuplicateWrite_DefaultMirrors.
 "				Use nested autocmds, but allow to suppress
@@ -63,7 +65,7 @@ endif
 
 "- commands --------------------------------------------------------------------
 
-command! -bar -nargs=* -complete=file DuplicateWrite if ! DuplicateWrite#Command(<q-args>) | echoerr ingo#err#Get() | endif
+command! -bang -bar -nargs=* -complete=file DuplicateWrite if ! DuplicateWrite#Command(<bang>0, <q-args>) | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteOff if ! DuplicateWrite#Off() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteList if ! DuplicateWrite#List() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteListAll if ! DuplicateWrite#ListAll() | echoerr ingo#err#Get() | endif
