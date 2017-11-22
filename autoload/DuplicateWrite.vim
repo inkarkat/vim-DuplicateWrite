@@ -16,6 +16,11 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.00.013	13-Jul-2016	ENH: Add logging of executed preCmd and postCmd
+"				if 'verbose' is set.
+"				ENH: Allow preCmd / postCmd to refer to the
+"				duplicated target file via <tfile> (including
+"				any filename-modifiers).
 "   2.00.012	11-Jul-2016	ENH: Support duplicate write only with :write,
 "				via additional 'bang' attribute.
 "   2.00.011	09-Jul-2016	ENH: Support passing [++opt] [+cmd] [-cmd]
@@ -126,11 +131,13 @@ function! s:EnsureAutocmd()
 	\               try |
 	\                   if g:DuplicateWrite_Object.bang && ! v:cmdbang | continue | endif |
 	\                   if ! DuplicateWrite#TargetDirectoryCheck(g:DuplicateWrite_Object.filespec) | continue | endif |
+	\                   if &verbose > 0 && ! empty(g:DuplicateWrite_Object.preCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite_Object.preCmd | endif |
 	\                   execute g:DuplicateWrite_Object.preCmd |
 	\                   execute "keepalt write!" join(map(g:DuplicateWrite_Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite_Object.filespec) |
 	\                   if g:DuplicateWrite_Object.postCmd ==# 'UNDO' |
 	\                       call DuplicateWrite#Undo() |
 	\                   else |
+	\                       if &verbose > 0 && ! empty(g:DuplicateWrite_Object.postCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite_Object.postCmd | endif |
 	\                       execute g:DuplicateWrite_Object.postCmd |
 	\                   endif |
 	\               catch /^Vim\%((\a\+)\)\=:/ |
@@ -170,6 +177,9 @@ function! DuplicateWrite#Off()
     endtry
 endfunction
 
+function! s:ProcessCmd( cmd, filespec)
+    return substitute(a:cmd, '\%(\%(^\|[^\\]\)\%(\\\\\)*\\\)\@<!\(<tfile>\)\(\%(:[p8~.htreS]\|:g\?s\(.\).\{-}\3.\{-}\3\)*\)', '\=fnamemodify(a:filespec, submatch(2))', 'g')
+endfunction
 function! DuplicateWrite#Command( bang, filePatternsString )
     if empty(a:filePatternsString)
 	return s:AddDefaultMirrors()
@@ -198,7 +208,7 @@ function! DuplicateWrite#Command( bang, filePatternsString )
     call ingo#err#Set('No file(s) have been added') " This may be overwritten by more specific errors in DuplicateWrite#Add().
     let l:cnt = 0
     for l:filespec in l:filespecs
-	if DuplicateWrite#Add(a:bang, l:opt, l:preCmd, l:postCmd, l:filespec)
+	if DuplicateWrite#Add(a:bang, l:opt, s:ProcessCmd(l:preCmd, l:filespec), s:ProcessCmd(l:postCmd, l:filespec), l:filespec)
 	    let l:cnt += 1
 	endif
     endfor
