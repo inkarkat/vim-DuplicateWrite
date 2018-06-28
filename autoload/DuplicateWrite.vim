@@ -10,12 +10,25 @@
 "   - ingo/os.vim autoload script
 "   - ingo/plugin/setting.vim autoload script
 "
-" Copyright: (C) 2005-2017 Ingo Karkat
+" Copyright: (C) 2005-2018 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.01.015	29-Jun-2018	BUG: A netrw target (e.g. scp://hostname/path)
+"                               causes the autocmds to get lost, because it
+"                               temporarily :setlocal nobuflisted, and that
+"                               triggers the BufDelete event. Wrap its action in
+"                               g:DuplicateWrite_Working check to prevent that.
+"                               Invoke (now public)
+"                               DuplicateWrite#EnsureAutocmd() after the write
+"                               to redefine the autocmds if necessary, and warn
+"                               about this (in verbose mode).
+"                               FIX: Cleanup of autocmds may not apply after
+"                               :bdelete, as the target buffer may not be the
+"                               current one. Encode the buffer number in the
+"                               action.
 "   2.01.014	23-Nov-2017	Exempt non-existing target dirspecs from check
 "				for existence if they match
 "				g:DuplicateWrite_TargetDirectoryCheckIgnorePattern.
@@ -111,9 +124,11 @@ function! DuplicateWrite#TargetDirectoryCheck( filespec )
     call mkdir(l:dirspec, 'p')
     return 1
 endfunction
-function! s:EnsureAutocmd()
+function! DuplicateWrite#EnsureAutocmd( shouldExistAlready )
     if exists('#DuplicateWrite#BufWritePost#<buffer>')
 	return  | " Don't define twice.
+    elseif a:shouldExistAlready && &verbose > 0
+	call ingo#msg#WarningMsg('DuplicateWrite: Need to redefine the autocmds as they got lost (:setlocal nobuflisted causes that)')
     endif
 
     augroup DuplicateWrite
@@ -156,6 +171,7 @@ function! s:EnsureAutocmd()
 	\       finally |
 	\           let &eventignore = g:DuplicateWrite_SaveEventIgnore |
 	\           unlet g:DuplicateWrite_Object g:DuplicateWrite_SaveEventIgnore b:DuplicateWrite_Working |
+	\           call DuplicateWrite#EnsureAutocmd(1) |
 	\       endtry |
 	\   endif
 	" Use try...catch to prevent the first write error from cancelling all
@@ -166,7 +182,15 @@ function! s:EnsureAutocmd()
 
 	" Clear the autocmds, as they survive when the :bdelete'd buffer is
 	" revived via :buffer.
-	autocmd BufDelete <buffer> autocmd! DuplicateWrite * <buffer>
+	" Note: netrw temporarily clears 'buflisted' during its operation (on
+	" :write scp://hostname/path); that also triggers the BufDelete event,
+	" even though the buffer eventually remains active. To prevent the
+	" removal of our autocmds, add a condition on this plugin not being
+	" working.
+	" Note: When BufDelete is fired, the current buffer isn't necessarily
+	" the one where the event was defined on. Need to explicitly encode the
+	" buffer number in the action to target the same buffer.
+	execute "autocmd BufDelete <buffer> if ! exists('b:DuplicateWrite_Working') | execute 'autocmd! DuplicateWrite * <buffer=" . bufnr('') . ">' | endif"
     augroup END
 endfunction
 
@@ -288,7 +312,7 @@ function! DuplicateWrite#Add( bang, opt, preCmd, postCmd, target )
 	return 0
     endif
 
-    call s:EnsureAutocmd()
+    call DuplicateWrite#EnsureAutocmd(0)
 
     let l:object = { 'filespec': l:targetFilespec, 'bang': a:bang, 'opt': a:opt, 'preCmd': a:preCmd, 'postCmd': a:postCmd }
 
