@@ -29,6 +29,10 @@
 "                               :bdelete, as the target buffer may not be the
 "                               current one. Encode the buffer number in the
 "                               action.
+"                               Refactoring: Use autoload variables to store the
+"                               temporary values of the autocmd.
+"                               b:DuplicateWrite_Working needs to be global
+"                               scoped for that, which is fine, too.
 "   2.01.014	23-Nov-2017	Exempt non-existing target dirspecs from check
 "				for existence if they match
 "				g:DuplicateWrite_TargetDirectoryCheckIgnorePattern.
@@ -142,23 +146,23 @@ function! DuplicateWrite#EnsureAutocmd( shouldExistAlready )
 	" individual [+cmd] change by a duplicate write will then be undone to
 	" that.
 	autocmd BufWritePost <buffer> nested
-	\   if ! exists('b:DuplicateWrite_Working') && expand('<afile>') ==# expand('%') |
+	\   if ! exists('g:DuplicateWrite#Working') && expand('<afile>') ==# expand('%') |
 	\       try |
-	\           let b:DuplicateWrite_Working = 1 |
-	\           let g:DuplicateWrite_SaveEventIgnore = &eventignore | let &eventignore = g:DuplicateWrite_EventIgnore |
+	\           let g:DuplicateWrite#Working = 1 |
+	\           let g:DuplicateWrite#SaveEventIgnore = &eventignore | let &eventignore = g:DuplicateWrite_EventIgnore |
 	\           call DuplicateWrite#SetUndoPoint() |
-	\           for g:DuplicateWrite_Object in b:DuplicateWrite |
+	\           for g:DuplicateWrite#Object in b:DuplicateWrite |
 	\               try |
-	\                   if g:DuplicateWrite_Object.bang && ! v:cmdbang | continue | endif |
-	\                   if ! DuplicateWrite#TargetDirectoryCheck(g:DuplicateWrite_Object.filespec) | continue | endif |
-	\                   if &verbose > 0 && ! empty(g:DuplicateWrite_Object.preCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite_Object.preCmd | endif |
-	\                   execute g:DuplicateWrite_Object.preCmd |
-	\                   execute "keepalt write!" join(map(g:DuplicateWrite_Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite_Object.filespec) |
-	\                   if g:DuplicateWrite_Object.postCmd ==# 'UNDO' |
+	\                   if g:DuplicateWrite#Object.bang && ! v:cmdbang | continue | endif |
+	\                   if ! DuplicateWrite#TargetDirectoryCheck(g:DuplicateWrite#Object.filespec) | continue | endif |
+	\                   if &verbose > 0 && ! empty(g:DuplicateWrite#Object.preCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite#Object.preCmd | endif |
+	\                   execute g:DuplicateWrite#Object.preCmd |
+	\                   execute "keepalt write!" join(map(g:DuplicateWrite#Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite#Object.filespec) |
+	\                   if g:DuplicateWrite#Object.postCmd ==# 'UNDO' |
 	\                       call DuplicateWrite#Undo() |
 	\                   else |
-	\                       if &verbose > 0 && ! empty(g:DuplicateWrite_Object.postCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite_Object.postCmd | endif |
-	\                       execute g:DuplicateWrite_Object.postCmd |
+	\                       if &verbose > 0 && ! empty(g:DuplicateWrite#Object.postCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite#Object.postCmd | endif |
+	\                       execute g:DuplicateWrite#Object.postCmd |
 	\                   endif |
 	\               catch /^Vim\%((\a\+)\)\=:/ |
 	\                   call ingo#msg#VimExceptionMsg() |
@@ -169,8 +173,8 @@ function! DuplicateWrite#EnsureAutocmd( shouldExistAlready )
 	\               endtry |
 	\           endfor |
 	\       finally |
-	\           let &eventignore = g:DuplicateWrite_SaveEventIgnore |
-	\           unlet g:DuplicateWrite_Object g:DuplicateWrite_SaveEventIgnore b:DuplicateWrite_Working |
+	\           let &eventignore = g:DuplicateWrite#SaveEventIgnore |
+	\           unlet g:DuplicateWrite#Object g:DuplicateWrite#SaveEventIgnore g:DuplicateWrite#Working |
 	\           call DuplicateWrite#EnsureAutocmd(1) |
 	\       endtry |
 	\   endif
@@ -190,7 +194,7 @@ function! DuplicateWrite#EnsureAutocmd( shouldExistAlready )
 	" Note: When BufDelete is fired, the current buffer isn't necessarily
 	" the one where the event was defined on. Need to explicitly encode the
 	" buffer number in the action to target the same buffer.
-	execute "autocmd BufDelete <buffer> if ! exists('b:DuplicateWrite_Working') | execute 'autocmd! DuplicateWrite * <buffer=" . bufnr('') . ">' | endif"
+	execute "autocmd BufDelete <buffer> if ! exists('g:DuplicateWrite#Working') | execute 'autocmd! DuplicateWrite * <buffer=" . bufnr('') . ">' | endif"
     augroup END
 endfunction
 
