@@ -168,6 +168,9 @@ HISTORY						      *DuplicateWrite-history*
 - The target directory check interferes with remote (netrw) targets. Add
   g:DuplicateWrite_TargetDirectoryCheckIgnorePattern configuration that skips
   URIs by default.
+- BUG: A netrw target (e.g. scp://hostname/path) causes the autocmds to get
+  lost.
+- FIX: Cleanup of autocmds may not apply after :bdelete.
 
 2.00	24-Aug-2016
 - ENH: Support passing [++opt] [+cmd] [-cmd] before filespecs, and allow
@@ -193,7 +196,7 @@ First published version after a complete reimplementation.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2005-2017 Ingo Karkat
+Copyright: (C) 2005-2018 Ingo Karkat
 The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
