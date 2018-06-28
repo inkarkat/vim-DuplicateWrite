@@ -10,12 +10,15 @@
 "   - ingo/os.vim autoload script
 "   - ingo/plugin/setting.vim autoload script
 "
-" Copyright: (C) 2005-2016 Ingo Karkat
+" Copyright: (C) 2005-2017 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   2.01.014	23-Nov-2017	Exempt non-existing target dirspecs from check
+"				for existence if they match
+"				g:DuplicateWrite_TargetDirectoryCheckIgnorePattern.
 "   2.00.013	13-Jul-2016	ENH: Add logging of executed preCmd and postCmd
 "				if 'verbose' is set.
 "				ENH: Allow preCmd / postCmd to refer to the
@@ -76,6 +79,8 @@ set cpo&vim
 function! DuplicateWrite#TargetDirectoryCheck( filespec )
     let l:dirspec = fnamemodify(a:filespec, ':h')
     if isdirectory(l:dirspec)
+	return 1
+    elseif l:dirspec =~# g:DuplicateWrite_TargetDirectoryCheckIgnorePattern
 	return 1
     elseif g:DuplicateWrite_CreateNonExistingTargetDirectory ==# 'no'
 	throw printf('DuplicateWrite: Cannot write "%s"; target directory does not exist', fnamemodify(a:filespec, ':~:.'))
