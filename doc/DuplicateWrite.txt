@@ -136,6 +136,12 @@ Especially when using default mirrors, the target directory for the duplicated
 write may not exist yet. The following variable defines the plugin's behavior
 in that case; either "no", "yes", or "ask": >
     let g:DuplicateWrite_CreateNonExistingTargetDirectory = 'ask'
+<			  *g:DuplicateWrite_TargetDirectoryCheckIgnorePattern*
+Remote target directories (e.g. |netrw| URLs like scp://path/to/file) cannot
+be checked for existence; in order to be able to write to them (and skip the
+useless target directory check), certain dirspecs (also local ones) can be
+exempted. Any dirspec that matches the regular expression not checked: >
+    let g:DuplicateWrite_TargetDirectoryCheckIgnorePattern = '^\a\+://'
 <
 ==============================================================================
 INTEGRATION					  *DuplicateWrite-integration*
@@ -157,6 +163,11 @@ IDEAS							*DuplicateWrite-ideas*
 
 ==============================================================================
 HISTORY						      *DuplicateWrite-history*
+
+2.01	RELEASEME
+- The target directory check interferes with remote (netrw) targets. Add
+  g:DuplicateWrite_TargetDirectoryCheckIgnorePattern configuration that skips
+  URIs by default.
 
 2.00	24-Aug-2016
 - ENH: Support passing [++opt] [+cmd] [-cmd] before filespecs, and allow
@@ -182,7 +193,7 @@ First published version after a complete reimplementation.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2005-2016 Ingo Karkat
+Copyright: (C) 2005-2017 Ingo Karkat
 The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
