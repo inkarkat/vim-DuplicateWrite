@@ -163,7 +163,7 @@ below).
 HISTORY
 ------------------------------------------------------------------------------
 
-##### 2.01    RELEASEME
+##### 2.01    29-Jun-2018
 - The target directory check interferes with remote (netrw) targets. Add
   g:DuplicateWrite\_TargetDirectoryCheckIgnorePattern configuration that skips
   URIs by default.
