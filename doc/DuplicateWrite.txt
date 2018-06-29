@@ -84,10 +84,16 @@ USAGE							*DuplicateWrite-usage*
 ==============================================================================
 INSTALLATION					 *DuplicateWrite-installation*
 
-This script is packaged as a |vimball|. If you have the "gunzip" decompressor
-in your PATH, simply edit the *.vmb.gz package in Vim; otherwise, decompress
-the archive first, e.g. using WinZip. Inside Vim, install by sourcing the
-vimball or via the |:UseVimball| command. >
+The code is hosted in a Git repo at
+    https://github.com/inkarkat/vim-DuplicateWrite
+You can use your favorite plugin manager, or "git clone" into a directory used
+for Vim |packages|. Releases are on the "stable" branch, the latest unstable
+development snapshot on "master".
+
+This script is also packaged as a |vimball|. If you have the "gunzip"
+decompressor in your PATH, simply edit the *.vmb.gz package in Vim; otherwise,
+decompress the archive first, e.g. using WinZip. Inside Vim, install by
+sourcing the vimball or via the |:UseVimball| command. >
     vim DuplicateWrite*.vmb.gz
     :so %
 To uninstall, use the |:RmVimball| command.
@@ -161,10 +167,16 @@ TODO							 *DuplicateWrite-todo*
 
 IDEAS							*DuplicateWrite-ideas*
 
+CONTRIBUTING					   *DuplicateWrite-contribute*
+
+Report any bugs, send patches, or suggest features via the issue tracker at
+https://github.com/inkarkat/vim-DuplicateWrite/issues or email (address
+below).
+
 ==============================================================================
 HISTORY						      *DuplicateWrite-history*
 
-2.01	RELEASEME
+2.01	29-Jun-2018
 - The target directory check interferes with remote (netrw) targets. Add
   g:DuplicateWrite_TargetDirectoryCheckIgnorePattern configuration that skips
   URIs by default.
