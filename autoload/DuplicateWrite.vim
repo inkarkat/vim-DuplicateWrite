@@ -6,90 +6,16 @@
 "   - ingo/compat.vim autoload script
 "   - ingo/err.vim autoload script
 "   - ingo/fs/path.vim autoload script
+"   - ingo/list.vim autoload script
 "   - ingo/msg.vim autoload script
-"   - ingo/os.vim autoload script
 "   - ingo/plugin/setting.vim autoload script
+"   - ingo/regexp/fromwildcard.vim autoload script
+"   - ingo/undo.vim autoload script
 "
 " Copyright: (C) 2005-2018 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
-"
-" REVISION	DATE		REMARKS
-"   2.01.015	29-Jun-2018	BUG: A netrw target (e.g. scp://hostname/path)
-"                               causes the autocmds to get lost, because it
-"                               temporarily :setlocal nobuflisted, and that
-"                               triggers the BufDelete event. Wrap its action in
-"                               g:DuplicateWrite_Working check to prevent that.
-"                               Invoke (now public)
-"                               DuplicateWrite#EnsureAutocmd() after the write
-"                               to redefine the autocmds if necessary, and warn
-"                               about this (in verbose mode).
-"                               FIX: Cleanup of autocmds may not apply after
-"                               :bdelete, as the target buffer may not be the
-"                               current one. Encode the buffer number in the
-"                               action.
-"                               Refactoring: Use autoload variables to store the
-"                               temporary values of the autocmd.
-"                               b:DuplicateWrite_Working needs to be global
-"                               scoped for that, which is fine, too.
-"   2.01.014	23-Nov-2017	Exempt non-existing target dirspecs from check
-"				for existence if they match
-"				g:DuplicateWrite_TargetDirectoryCheckIgnorePattern.
-"   2.00.013	13-Jul-2016	ENH: Add logging of executed preCmd and postCmd
-"				if 'verbose' is set.
-"				ENH: Allow preCmd / postCmd to refer to the
-"				duplicated target file via <tfile> (including
-"				any filename-modifiers).
-"   2.00.012	11-Jul-2016	ENH: Support duplicate write only with :write,
-"				via additional 'bang' attribute.
-"   2.00.011	09-Jul-2016	ENH: Support passing [++opt] [+cmd] [-cmd]
-"				before filespecs, and allow multiple filespecs.
-"				Implement special undo handling with -[UNDO].
-"				ENH: Add default mirror configuration in
-"				g:DuplicateWrite_DefaultMirrors, implemented in
-"				s:AddDefaultMirrors().
-"				Factor out s:EnsureAutocmd().
-"				Use nested autocmds, but allow to suppress
-"				certain events via g:DuplicateWrite_EventIgnore.
-"				ENH: Check for existence of target directory in
-"				DuplicateWrite#TargetDirectoryCheck(), and
-"				create it if desired.
-"				Rename DuplicateWrite#Add() to
-"				DuplicateWrite#Command(), and expose s:Add() as
-"				the former, also as an integration point.
-"   1.01.010	13-Sep-2013	FIX: Use full absolute path and normalize to be
-"				immune against changes in CWD.
-"   1.00.009	13-Sep-2013	ENH: Check for a passed dirspec, and use the
-"				same filename then.
-"				Rewrite the implementation completely: Instead
-"				of using the filespec in the autocmds, we define
-"				a single buffer-scoped autocmd, and keep the
-"				filespecs in the b:DuplicateWrite variable. This
-"				makes it easier to avoid adding the same
-"				cascaded write target twice. The duplication is
-"				automatically cleared on :bdelete, so we don't
-"				need the configurable behavior any more. It also
-"				means the list functions become more involved,
-"				but this also allows us to improve on the output
-"				format.
-"	008	08-Aug-2013	Move escapings.vim into ingo-library.
-"	007	14-Dec-2012	Extract escaping for :autocmd to
-"				escapings#autocmdescape().
-"	006	27-Aug-2012	Split off autoload script.
-"	005	26-Feb-2012	Renamed b:duplicatewrite to b:DuplicateWrite to
-"				match plugin name.
-"	004	12-Apr-2011	BUG: Duplicate write clobbers alternate file,
-"				use :keepalt.
-"				Cosmetics: Script formatting and function
-"				ordering.
-"				Use escapings#fnameescape() to properly handle
-"				all filespecs. Requiring Vim 7.0 or higher now.
-"				Add b:duplicatewrite flag for easy flagging in
-"				statusline.
-"	0.03	10-Nov-2005	BF: Filespecs containing spaces do work now.
-"	0.02	19-Jul-2005	Added configurable behavior on buffer deletion.
-"	0.01	19-Jul-2005	file creation
 let s:save_cpo = &cpo
 set cpo&vim
 
