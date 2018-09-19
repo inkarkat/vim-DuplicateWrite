@@ -139,7 +139,7 @@ endfunction
 function! s:ProcessCmd( cmd, filespec)
     return substitute(a:cmd, '\%(\%(^\|[^\\]\)\%(\\\\\)*\\\)\@<!\(<tfile>\)\(\%(:[p8~.htreS]\|:g\?s\(.\).\{-}\3.\{-}\3\)*\)', '\=fnamemodify(a:filespec, submatch(2))', 'g')
 endfunction
-function! DuplicateWrite#Command( bang, filePatternsString )
+function! DuplicateWrite#Command( bang, filePatternsString, ... )
     if empty(a:filePatternsString)
 	return s:AddDefaultMirrors()
     endif
@@ -158,6 +158,14 @@ function! DuplicateWrite#Command( bang, filePatternsString )
     let l:postCmd = (l:postCmd ==# '-' ? 'UNDO' : l:postCmd[1:])
 
     let l:filespecs = ingo#cmdargs#glob#Expand(l:filePatterns, 1, 1)
+
+    if a:0
+	" Extension point: Allow an optional processing function to manipulate
+	" the List of filespecs.
+	if ! call(a:1, [l:filespecs])
+	    return 0
+	endif
+    endif
 
     if len(l:filespecs) == 0
 	call ingo#err#Set('file, dirspec, or glob required')
@@ -333,6 +341,31 @@ function! DuplicateWrite#Undo()
     endif
 
     call winrestview(b:DuplicateWrite_Undo.view)
+endfunction
+
+
+function! DuplicateWrite#ScpCommand( bang, filePatternsString )
+    if empty(a:filePatternsString)  " Should never happen, :DuplicateScp has mandatory arguments.
+	call ingo#err#Set('No host(s) passed')
+	return 0
+    endif
+
+    return DuplicateWrite#Command(a:bang, a:filePatternsString, function('s:HostArgumentsToFileSpecs'))
+endfunction
+function! s:HostArgumentsToFileSpecs( hostArguments )
+    if empty(a:hostArguments)   " Can happen if only options have been passed.
+	call ingo#err#Set('No host(s) passed')
+	return 0
+    endif
+
+    let l:target = substitute(expand('%:p:~'), '^\~\V' . escape(ingo#fs#path#Separator(), '\'), '', '')
+    if empty(l:target)
+	call ingo#err#Set('No file name; either name the buffer or pass a full filespec')
+	return 0
+    endif
+
+    call map(a:hostArguments, 'printf("scp://%s/%s", v:val, l:target)')
+    return 1
 endfunction
 
 let &cpo = s:save_cpo

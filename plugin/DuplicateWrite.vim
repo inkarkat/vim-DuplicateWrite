@@ -35,6 +35,7 @@ endif
 "- commands --------------------------------------------------------------------
 
 command! -bang -bar -nargs=* -complete=file DuplicateWrite if ! DuplicateWrite#Command(<bang>0, <q-args>) | echoerr ingo#err#Get() | endif
+command! -bang -bar -nargs=+ -complete=file DuplicateScp if ! DuplicateWrite#ScpCommand(<bang>0, <q-args>) | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteOff if ! DuplicateWrite#Off() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteList if ! DuplicateWrite#List() | echoerr ingo#err#Get() | endif
 command! -bar DuplicateWriteListAll if ! DuplicateWrite#ListAll() | echoerr ingo#err#Get() | endif

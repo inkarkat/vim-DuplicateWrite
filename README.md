@@ -57,6 +57,16 @@ USAGE
                             different {file} targets) for a buffer to add cascades
                             to several concurrent locations.
 
+    :DuplicateScp[!] [++opt] [+cmd] [-cmd] [{user}@]{host} [...]
+                            Create a cascaded write of the current buffer to the
+                            same (relative to $HOME / absolute) file system
+                            location on remote {host} [logging in with {user}].
+                            Leverages the netrw plugin. You can also directly
+                            pass the
+                                scp://{host}/{path}
+                            to :DuplicateWrite, but this variant saves you from
+                            remembering the syntax and the path mangling.
+
     :DuplicateWriteOff      Turn off all cascaded writes for the current buffer.
 
     :DuplicateWriteList     List the cascaded write target(s) for the current
@@ -162,6 +172,10 @@ below).
 
 HISTORY
 ------------------------------------------------------------------------------
+
+##### 2.10    RELEASEME
+- ENH: Add :DuplicateScp [{user}@]{host} [...] variant of :DuplicateWrite that
+  streamlines netrw usage to the same location on another host.
 
 ##### 2.01    29-Jun-2018
 - The target directory check interferes with remote (netrw) targets. Add
