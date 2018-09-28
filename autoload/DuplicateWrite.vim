@@ -139,15 +139,9 @@ endfunction
 function! s:ProcessCmd( cmd, filespec)
     return substitute(a:cmd, '\%(\%(^\|[^\\]\)\%(\\\\\)*\\\)\@<!\(<tfile>\)\(\%(:[p8~.htreS]\|:g\?s\(.\).\{-}\3.\{-}\3\)*\)', '\=fnamemodify(a:filespec, submatch(2))', 'g')
 endfunction
-function! DuplicateWrite#Command( bang, filePatternsString, ... )
-    if empty(a:filePatternsString)
-	return s:AddDefaultMirrors()
-    endif
-
-    let l:filePatterns = ingo#cmdargs#file#SplitAndUnescape(a:filePatternsString)
-
+function! DuplicateWrite#ParseFilePatterns( filePatterns )
     " Strip off the optional ++opt +cmd file options and commands.
-    let [l:filePatterns, l:fileOptionsAndCommands] = ingo#cmdargs#file#FilterFileOptionsAndCommands(l:filePatterns)
+    let [l:filePatterns, l:fileOptionsAndCommands] = ingo#cmdargs#file#FilterFileOptionsAndCommands(a:filePatterns)
 
     let l:preCmd = (get(l:fileOptionsAndCommands, -1, '') =~# '^++\@!' ? remove(l:fileOptionsAndCommands, -1)[1:] : '')
     let l:opt = l:fileOptionsAndCommands
@@ -157,6 +151,15 @@ function! DuplicateWrite#Command( bang, filePatternsString, ... )
     let l:postCmd = (get(l:filePatterns, 0, '') =~# '^-' ? remove(l:filePatterns, 0) : '')
     let l:postCmd = (l:postCmd ==# '-' ? 'UNDO' : l:postCmd[1:])
 
+    return [l:opt, l:preCmd, l:postCmd, l:filePatterns]
+endfunction
+function! DuplicateWrite#Command( bang, filePatternsString, ... )
+    if empty(a:filePatternsString)
+	return s:AddDefaultMirrors()
+    endif
+
+    let [l:opt, l:preCmd, l:postCmd, l:filePatterns] =
+    \   DuplicateWrite#ParseFilePatterns(ingo#cmdargs#file#SplitAndUnescape(a:filePatternsString))
     let l:filespecs = ingo#cmdargs#glob#Expand(l:filePatterns, 1, 1)
 
     if a:0
