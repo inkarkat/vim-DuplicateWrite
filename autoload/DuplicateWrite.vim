@@ -1,18 +1,9 @@
 " DuplicateWrite.vim: Cascade the writing of a file to another location.
 "
 " DEPENDENCIES:
-"   - ingo/cmdargs/file.vim autoload script
-"   - ingo/cmdargs/glob.vim autoload script
-"   - ingo/compat.vim autoload script
-"   - ingo/err.vim autoload script
-"   - ingo/fs/path.vim autoload script
-"   - ingo/list.vim autoload script
-"   - ingo/msg.vim autoload script
-"   - ingo/plugin/setting.vim autoload script
-"   - ingo/regexp/fromwildcard.vim autoload script
-"   - ingo/undo.vim autoload script
+"   - ingo-library.vim plugin
 "
-" Copyright: (C) 2005-2018 Ingo Karkat
+" Copyright: (C) 2005-2023 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>

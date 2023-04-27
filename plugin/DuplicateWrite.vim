@@ -2,10 +2,9 @@
 "
 " DEPENDENCIES:
 "   - Requires Vim 7.0 or higher.
-"   - DuplicateWrite.vim autoload script
-"   - ingo/err.vim autoload script
+"   - ingo-library.vim plugin
 "
-" Copyright: (C) 2005-2018 Ingo Karkat
+" Copyright: (C) 2005-2023 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
