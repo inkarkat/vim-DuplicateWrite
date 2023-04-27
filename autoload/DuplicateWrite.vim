@@ -74,7 +74,7 @@ function! DuplicateWrite#EnsureAutocmd( shouldExistAlready )
 	\                   if ! DuplicateWrite#TargetDirectoryCheck(g:DuplicateWrite#Object.filespec) | continue | endif |
 	\                   if &verbose > 0 && ! empty(g:DuplicateWrite#Object.preCmd) | echomsg 'DuplicateWrite: Execute' g:DuplicateWrite#Object.preCmd | endif |
 	\                   execute g:DuplicateWrite#Object.preCmd |
-	\                   execute "keepalt write!" join(map(g:DuplicateWrite#Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite#Object.filespec) |
+	\                   execute 'keepalt' g:DuplicateWrite#Object.range . 'write!' join(map(g:DuplicateWrite#Object.opt, "escape(v:val, '\\ ')")) ingo#compat#fnameescape(g:DuplicateWrite#Object.filespec) |
 	\                   if g:DuplicateWrite#Object.postCmd ==# 'UNDO' |
 	\                       call DuplicateWrite#Undo() |
 	\                   else |
@@ -144,9 +144,21 @@ function! DuplicateWrite#ParseFilePatterns( filePatterns )
 
     return [l:opt, l:preCmd, l:postCmd, l:filePatterns]
 endfunction
-function! DuplicateWrite#Command( bang, filePatternsString, ... )
+function! DuplicateWrite#Command( range, bang, filePatternsString, ... )
+    let l:range = a:range
+    if ! empty(l:range)
+	" Obtain the original, unexpanded range from the command history so that
+	" identifiers like . and $ continue to refer to the current position on
+	" future saves. If we directly used the resolved line numbers, the range
+	" would be static.
+	let l:range = matchstr(histget('cmd', -1), '\C\%(^\||\)\s*\zs[^|]\+\ze\s*Duplicate\u')
+	if empty(l:range)
+	    let l:range = a:range   " Fall back to the static range if range extraction failed somehow.
+	endif
+    endif
+
     if empty(a:filePatternsString)
-	return s:AddDefaultMirrors()
+	return s:AddDefaultMirrors(l:range)
     endif
 
     let [l:opt, l:preCmd, l:postCmd, l:filePatterns] =
@@ -169,14 +181,14 @@ function! DuplicateWrite#Command( bang, filePatternsString, ... )
     call ingo#err#Set('No file(s) have been added') " This may be overwritten by more specific errors in DuplicateWrite#Add().
     let l:cnt = 0
     for l:filespec in l:filespecs
-	if DuplicateWrite#Add(a:bang, l:opt, s:ProcessCmd(l:preCmd, l:filespec), s:ProcessCmd(l:postCmd, l:filespec), l:filespec)
+	if DuplicateWrite#Add(l:range, a:bang, l:opt, s:ProcessCmd(l:preCmd, l:filespec), s:ProcessCmd(l:postCmd, l:filespec), l:filespec)
 	    let l:cnt += 1
 	endif
     endfor
 
     return (l:cnt > 0)
 endfunction
-function! s:AddDefaultMirrors()
+function! s:AddDefaultMirrors( range )
     let l:configuration = ingo#plugin#setting#GetBufferLocal('DuplicateWrite_DefaultMirrors')
     call ingo#err#Set('No file(s) passed, and no default mirrors ' . (empty(l:configuration) ? 'defined' : 'apply')) " This may be overwritten by more specific errors in DuplicateWrite#Add().
 
@@ -198,6 +210,7 @@ function! s:AddDefaultMirrors()
 	\       ingo#fs#path#Combine(l:argumentObject.pathspec, l:pathToFile)
 	\)
 	if DuplicateWrite#Add(
+	\   get(l:argumentObject, 'range', a:range),
 	\   get(l:argumentObject, 'bang', 0),
 	\   ingo#list#Make(get(l:argumentObject, 'opt', [])),
 	\   get(l:argumentObject, 'preCmd', ''),
@@ -209,6 +222,7 @@ function! s:AddDefaultMirrors()
 	    call ingo#msg#StatusMsg(printf('Added duplicate write based on "%s" to %s',
 	    \   l:sourceGlob,
 	    \   s:ToString({
+	    \       'range': get(l:argumentObject, 'range', a:range),
 	    \       'bang': get(l:argumentObject, 'bang', 0),
 	    \       'opt': ingo#list#Make(get(l:argumentObject, 'opt', [])),
 	    \       'preCmd': get(l:argumentObject, 'preCmd', ''),
@@ -220,7 +234,7 @@ function! s:AddDefaultMirrors()
     endfor
     return (l:cnt > 0)
 endfunction
-function! DuplicateWrite#Add( bang, opt, preCmd, postCmd, target )
+function! DuplicateWrite#Add( range, bang, opt, preCmd, postCmd, target )
     if isdirectory(a:target)
 	if empty(expand('%:t'))
 	    call ingo#err#Set('No file name; either name the buffer or pass a full filespec')
@@ -246,7 +260,7 @@ function! DuplicateWrite#Add( bang, opt, preCmd, postCmd, target )
 
     call DuplicateWrite#EnsureAutocmd(0)
 
-    let l:object = { 'filespec': l:targetFilespec, 'bang': a:bang, 'opt': a:opt, 'preCmd': a:preCmd, 'postCmd': a:postCmd }
+    let l:object = { 'filespec': l:targetFilespec, 'range': a:range, 'bang': a:bang, 'opt': a:opt, 'preCmd': a:preCmd, 'postCmd': a:postCmd }
 
     if ! exists('b:DuplicateWrite') | let b:DuplicateWrite = [] | endif
     let l:idx = index(
@@ -270,6 +284,7 @@ endfunction
 function! s:ToString( object )
     return join(
     \   [a:object.bang ? '!' : ' '] +
+    \   (empty(a:object.range) ? [] : [a:object.range]) +
     \   map(copy(a:object.opt), "escape(v:val, '\\ ')") +
     \   (empty(a:object.preCmd) ? [] : ['+' . escape(a:object.preCmd, '\ ')]) +
     \   (empty(a:object.postCmd) ? [] : ['-' . escape(a:object.postCmd, '\ ')]) +
@@ -338,13 +353,13 @@ function! DuplicateWrite#Undo()
 endfunction
 
 
-function! DuplicateWrite#ScpCommand( bang, filePatternsString )
+function! DuplicateWrite#ScpCommand( range, bang, filePatternsString )
     if empty(a:filePatternsString)  " Should never happen, :DuplicateScp has mandatory arguments.
 	call ingo#err#Set('No host(s) passed')
 	return 0
     endif
 
-    return DuplicateWrite#Command(a:bang, a:filePatternsString, function('s:HostArgumentsToFileSpecs'))
+    return DuplicateWrite#Command(a:range, a:bang, a:filePatternsString, function('s:HostArgumentsToFileSpecs'))
 endfunction
 function! s:HostArgumentsToFileSpecs( hostArguments )
     if empty(a:hostArguments)   " Can happen if only options have been passed.
