@@ -153,7 +153,8 @@ function! DuplicateWrite#Command( range, bang, filePatternsString, ... )
 	" would be static.
 	let l:range = matchstr(histget('cmd', -1), '\C\%(^\||\)\s*\zs[^|]\+\ze\s*Duplicate\u')
 	if empty(l:range)
-	    let l:range = a:range   " Fall back to the static range if range extraction failed somehow.
+	    " Fall back to the static range if range extraction failed somehow, but interpret a range that encompasses the entire buffer as %.
+	    let l:range = (a:range ==# '1,' . line('$') ? '' : a:range)
 	endif
     endif
 
