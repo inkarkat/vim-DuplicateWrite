@@ -177,7 +177,7 @@ below).
 HISTORY
 ------------------------------------------------------------------------------
 
-##### 2.10    RELEASEME
+##### 2.10    09-Nov-2024
 - ENH: Add :DuplicateScp [{user}@]{host} [...] variant of :DuplicateWrite that
   streamlines netrw usage to the same location on another host.
 - ENH: Support an optional [range] for :DuplicateWrite and :DuplicateScp to
@@ -221,7 +221,7 @@ __You need to update to ingo-library ([vimscript #4433](http://www.vim.org/scrip
 - Started development.
 
 ------------------------------------------------------------------------------
-Copyright: (C) 2005-2023 Ingo Karkat -
+Copyright: (C) 2005-2024 Ingo Karkat -
 The [VIM LICENSE](http://vimdoc.sourceforge.net/htmldoc/uganda.html#license) applies to this plugin.
 
 Maintainer:     Ingo Karkat &lt;ingo@karkat.de&gt;
