@@ -1,4 +1,4 @@
-DUPLICATE WRITE   
+DUPLICATE WRITE
 ===============================================================================
 _by Ingo Karkat_
 
@@ -32,8 +32,10 @@ commands.
 USAGE
 ------------------------------------------------------------------------------
 
-    :DuplicateWrite[!] [++opt] [+cmd] [-cmd] {file}|{dirspec} [...]
-                            Create a cascaded write of the current buffer to the
+    :[range]DuplicateWrite[!] [++opt] [+cmd] [-cmd] {file}|{dirspec} [...]
+                            Create a cascaded write of [range in, keeping
+                            specifiers like . and $ and dynamically re-evaluating
+                            them on each write] the current buffer to the
                             specified {file}, or to a file with the same filename
                             located in {dirspec}. From now on, whenever the buffer
                             is |:w|ritten, it will also be persisted to the passed
@@ -56,6 +58,17 @@ USAGE
                             You can issue the command multiple times (with
                             different {file} targets) for a buffer to add cascades
                             to several concurrent locations.
+
+    :[range]DuplicateScp[!] [++opt] [+cmd] [-cmd] [{user}@]{host} [...]
+                            Create a cascaded write of [range in] the current
+                            buffer to the same (relative to $HOME / absolute) file
+                            system location on remote {host} [logging in with
+                            {user}].
+                            Leverages the netrw plugin. You can also directly
+                            pass the
+                                scp://{host}/{path}
+                            to :DuplicateWrite, but this variant saves you from
+                            remembering the syntax and the path mangling.
 
     :DuplicateWriteOff      Turn off all cascaded writes for the current buffer.
 
@@ -110,15 +123,16 @@ yield the target:
     \   ['**\src\**', {
     \                   'pathspec': 'E:\deploy',
     \                   'bang': 0,
+    \                   'range': '100,$',
     \                   'opt': '++ff=dos',
     \                   'preCmd': '%s/Copyright: \zsXXXX/Acme Corp/e,
     \                   'postCmd': 'UNDO'
     \                 }]
     \]
 
-This would for example duplicate a file D:\project\foo\bin\zap.cmd to
-X:\foo\bin\zap.cmd and any file anywhere inside a src/ directory directly to
-E:\deploy when you execute :DuplicateWrite. A buffer-local configuration
+This would for example duplicate a file D:\\project\\foo\\bin\\zap.cmd to
+X:\\foo\\bin\\zap.cmd and any file anywhere inside a src/ directory directly to
+E:\\deploy when you execute :DuplicateWrite. A buffer-local configuration
 overrides the global one. All matching {source-glob} are processed, so if you
 need to duplicate to multiple locations, define several same {source-glob}s.
 
@@ -163,6 +177,16 @@ below).
 HISTORY
 ------------------------------------------------------------------------------
 
+##### 2.10    09-Nov-2024
+- ENH: Add :DuplicateScp [{user}@]{host} [...] variant of :DuplicateWrite that
+  streamlines netrw usage to the same location on another host.
+- ENH: Support an optional [range] for :DuplicateWrite and :DuplicateScp to
+  only persist part of the buffer. (For example, just the JavaScript part of a
+  GitHub action, or a scriptlet embedded in a Markdown file.) To be more
+  useful, the original range is extracted from the command history and
+  reevaluated on each write, so that addresses like . and $ are adapted to the
+  current situation.
+
 ##### 2.01    29-Jun-2018
 - The target directory check interferes with remote (netrw) targets. Add
   g:DuplicateWrite\_TargetDirectoryCheckIgnorePattern configuration that skips
@@ -181,12 +205,14 @@ HISTORY
   g:DuplicateWrite\_CreateNonExistingTargetDirectory.
 - ENH: Support duplicate write only with :write when using :DuplicateWrite!
   during definition.
-  __You need to update to ingo-library ([vimscript #4433](http://www.vim.org/scripts/script.php?script_id=4433)) version 1.025!__
+
+__You need to update to ingo-library ([vimscript #4433](http://www.vim.org/scripts/script.php?script_id=4433)) version 1.025!__
 
 ##### 1.01    13-Sep-2013
 - FIX: Use full absolute path and normalize to be immune against changes in
   CWD.
-  __You need to update to ingo-library ([vimscript #4433](http://www.vim.org/scripts/script.php?script_id=4433)) version 1.013!__
+
+__You need to update to ingo-library ([vimscript #4433](http://www.vim.org/scripts/script.php?script_id=4433)) version 1.013!__
 
 ##### 1.00    13-Sep-2013
 - First published version after a complete reimplementation.
@@ -195,7 +221,7 @@ HISTORY
 - Started development.
 
 ------------------------------------------------------------------------------
-Copyright: (C) 2005-2018 Ingo Karkat -
+Copyright: (C) 2005-2024 Ingo Karkat -
 The [VIM LICENSE](http://vimdoc.sourceforge.net/htmldoc/uganda.html#license) applies to this plugin.
 
-Maintainer:     Ingo Karkat <ingo@karkat.de>
+Maintainer:     Ingo Karkat &lt;ingo@karkat.de&gt;
