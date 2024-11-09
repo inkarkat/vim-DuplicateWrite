@@ -191,7 +191,7 @@ below).
 ==============================================================================
 HISTORY						      *DuplicateWrite-history*
 
-2.10	RELEASEME
+2.10	09-Nov-2024
 - ENH: Add :DuplicateScp [{user}@]{host} [...] variant of :DuplicateWrite that
   streamlines netrw usage to the same location on another host.
 - ENH: Support an optional [range] for :DuplicateWrite and :DuplicateScp to
@@ -233,7 +233,7 @@ First published version after a complete reimplementation.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2005-2023 Ingo Karkat
+Copyright: (C) 2005-2024 Ingo Karkat
 The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
